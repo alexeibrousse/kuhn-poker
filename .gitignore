@@ -1,0 +1,16 @@
+# Python junk
+__pycache__/
+*.py[cod]
+*.pyo
+
+# macOS junk
+.DS_Store
+
+# Jupyter notebook autosaves
+*.ipynb_checkpoints/
+
+# Environment files
+.env
+
+# Logs
+*.log
