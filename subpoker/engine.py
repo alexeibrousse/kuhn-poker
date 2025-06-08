@@ -12,7 +12,7 @@ class KuhnPokerEnv:
         self.pot = 2
         self.bets = [0, 0]
         self.history = []
-        self.current_player = 0
+        self.current_player = random.choice([0,1])
         self.terminal = False
         self.winner = None
 
