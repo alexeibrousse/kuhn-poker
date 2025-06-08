@@ -54,10 +54,11 @@ def nnbot(state): # Playing the round for the neural network
     filtered_probs /= np.sum(filtered_probs) # Normalizing these probabilites
 
     action = np.random.choice(chosen_actions, p=filtered_probs) # Choosing one action
-    action_index = action_map.index(action)
+    action_index = action_index = chosen_indices[chosen_actions.index(action)]
 
-    return action, X, probs, action_index
-
+    # Convert unified label back into an actual engine-valid action
+    real_action = "check" if action == "check/call" else action
+    return real_action, X, probs, action_index
 
 
 n_epochs = 1000
