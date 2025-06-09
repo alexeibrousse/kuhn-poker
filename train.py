@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from subpoker.engine import KuhnPokerEnv 
 from subpoker.agents import RuleBasedAgent
@@ -64,7 +65,7 @@ def nnbot(state: dict) -> tuple: # Playing the round for the neural network
     action = np.random.choice(chosen_actions, p=filtered_probs) # Choosing one action
     action_index = chosen_indices[chosen_actions.index(action)]
 
-    # Convert unified label back into an actual engine-valid action
+    # Convert unified label back into an actual valid action
     if action == "check/call":
         if "check" in env.legal_actions():
             real_action = "check"
@@ -78,6 +79,12 @@ def nnbot(state: dict) -> tuple: # Playing the round for the neural network
     return real_action, X, probs, action_index
 
 
+
+action_log = {
+    1:{"check": 0, "call":0, "bet": 0, "fold": 0},
+    2:{"check": 0, "call":0, "bet": 0, "fold": 0},
+    3:{"check": 0, "call":0, "bet": 0, "fold": 0}
+}
 
 episode_rewards = [] # Rewards after one round
 average_rewards = []
@@ -93,6 +100,8 @@ for e in range(n_epochs):
         if state["player"] == 0:
             action, X, probs, action_index = nnbot(state)
             trajectory.append((X, action_index, probs))
+            hand = state["hand"]
+            action_log[hand][action] +=1
         else:
             legal = env.legal_actions()
             action = rbb.act(state, legal)
@@ -139,4 +148,9 @@ plt.title("Neural Network Learning Progress")
 plt.grid(True)
 plt.show()
 
+
 print(np.mean(episode_rewards[-10000:]))
+
+df = pd.DataFrame(action_log)
+df.index.name = "Hand"
+print(df)
