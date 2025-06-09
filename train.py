@@ -8,11 +8,11 @@ env = KuhnPokerEnv()
 state = env.reset()
 
 n_epochs = 50000
-nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=0.001)
+nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=1e-4)
 rbb = RuleBasedAgent()
 
 
-def encode_state(state):
+def encode_state(state: dict) -> np.ndarray:
     """
     Converts the environment state into a neural network input vector.
     """
@@ -37,7 +37,7 @@ def encode_state(state):
     return np.array(card_vec + [player] + history_vec)
 
 
-def nnbot(state): # Playing the round for the neural network
+def nnbot(state: dict) -> tuple: # Playing the round for the neural network
     X = encode_state(state)
 
     #Putting check and call together
@@ -55,18 +55,18 @@ def nnbot(state): # Playing the round for the neural network
     chosen_indices = legal_indices # For clarity
 
 
-    probs, z1, a1, z2 = nn.forward(X)
-
+    probs  = nn.forward(X)
     filtered_probs = probs[chosen_indices] # Removing the probabilities of illegal actions
+    
     total = np.sum(filtered_probs)
     if total == 0:
-        # Uniform probability over legal actions if all logits are ~zero
+        # Uniform probability over legal actions if all logits are zero
         filtered_probs = np.ones_like(filtered_probs) / len(filtered_probs)
     else:
-        filtered_probs /= total # Normalizing these probabilites
+        filtered_probs /= total # Normalizing these probabilities
 
     action = np.random.choice(chosen_actions, p=filtered_probs) # Choosing one action
-    action_index = action_index = chosen_indices[chosen_actions.index(action)]
+    action_index = chosen_indices[chosen_actions.index(action)]
 
     # Convert unified label back into an actual engine-valid action
     if action == "check/call":
@@ -138,7 +138,9 @@ for e in range(n_epochs):
 
 plt.plot(range(0, n_epochs, 1000), average_rewards)
 plt.xlabel("Epoch")
-plt.ylabel("Average Reward (last 10)")
+plt.ylabel("Average Reward (last 1000)")
 plt.title("Neural Network Learning Progress")
 plt.grid(True)
 plt.show()
+
+print(np.mean(episode_rewards[-10000:]))

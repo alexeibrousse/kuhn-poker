@@ -49,24 +49,24 @@ class KuhnPokerEnv:
             raise ValueError(f"Invalid action: {action}")
         self.history.append(action)
 
-        #Apply action
+        # Apply action
         if action == "check":
-            if  self.history == ["check", "check"]:
+            if self.history == ["check", "check"]:
                 self.terminal = True
             else:
                 self.current_player = 1 - self.current_player # Switch player
             
-        if action == "bet":
+        elif action == "bet":
             self.bets[self.current_player] += 1
             self.pot += 1
             self.current_player = 1 - self.current_player
         
-        if action == "call":
+        elif action == "call":
             self.bets[self.current_player] += 1
             self.pot += 1
             self.terminal = True
         
-        if action == "fold":
+        elif action == "fold":
             self.terminal = True
             self.winner = 1 - self.current_player # Other player wins
         

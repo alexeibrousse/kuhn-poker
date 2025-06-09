@@ -1,7 +1,7 @@
 import numpy as np
 """
 Functional implementation of a simple forward-feeding neural network for Policy Gradient (REINFORCE).
-Input is a 4-dimensional array, passed through a ReLU-activated hidden layer for a softmax probability distribution output.
+Input is a numpy ndarray, passed through a ReLU-activated hidden layer for a softmax probability distribution output.
 """
 
 class NeuralNet():
@@ -11,7 +11,7 @@ class NeuralNet():
         self.output_size = output_size
         self.lr = learning_rate
 
-        # Xavier Initialization and random initizalization for the biases
+        # Xavier initialization and random initialization for the biases
         self.W1 = np.random.randn(input_size, hidden_size)  * np.sqrt(6 / (input_size + hidden_size))
         self.b1 = np.random.randn(hidden_size)
 
@@ -30,7 +30,7 @@ class NeuralNet():
         self.z2 = self.a1 @ self.W2 + self.b2
         probs = self.softmax(self.z2)
         
-        return probs, self.z1, self.a1, self.z2
+        return probs
 
 
     def softmax(self,X):
