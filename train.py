@@ -10,7 +10,7 @@ state = env.reset()
 
 n_epochs = 50000
 nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=1e-4)
-rbb = RuleBasedAgent()
+agent = RuleBasedAgent()
 
 
 def encode_state(state: dict) -> np.ndarray:
@@ -83,8 +83,9 @@ def nnbot(state: dict) -> tuple: # Playing the round for the neural network
 action_log = {
     1:{"check": 0, "call":0, "bet": 0, "fold": 0},
     2:{"check": 0, "call":0, "bet": 0, "fold": 0},
-    3:{"check": 0, "call":0, "bet": 0, "fold": 0}
+    3:{"check": 0, "call":0, "bet": 0, "fold": 0},
 }
+win_loss_log = {"won 1": 0, "won 2": 0, "lost 1": 0, "lost 2": 0}
 
 episode_rewards = [] # Rewards after one round
 average_rewards = []
@@ -104,11 +105,21 @@ for e in range(n_epochs):
             action_log[hand][action] +=1
         else:
             legal = env.legal_actions()
-            action = rbb.act(state, legal)
+            action = agent.act(state, legal)
 
         state, step_rewards, done, _ = env.step(action)
         reward = step_rewards[0]
     
+    if done and e > 1000 : #Win/lost count starting from 1000 episodes
+        if reward ==1:
+            win_loss_log["won 1"] += 1
+        elif reward ==2:
+            win_loss_log["won 2"] += 1
+        elif reward ==-1:
+            win_loss_log["lost 1"] += 1
+        else:
+            win_loss_log["lost 2"] += 1
+
     baseline = 0.99 * baseline + 0.01 * reward # Update the baseline to reduce variance for backpropagation.
 
     if trajectory:
@@ -154,3 +165,16 @@ print(np.mean(episode_rewards[-10000:]))
 df = pd.DataFrame(action_log)
 df.index.name = "Hand"
 print(df)
+print()
+
+# Display win/loss stats
+won_rewards = win_loss_log["won 1"] + 2 * win_loss_log["won 2"]
+lost_rewards = win_loss_log["lost 1"] + 2 * win_loss_log["lost 2"]
+total_games = win_loss_log["won 1"] + win_loss_log["won 2"] + win_loss_log["lost 1"] + win_loss_log["lost 2"]
+win_rate = (win_loss_log["won 1"] + win_loss_log["won 2"]) / total_games if total_games > 0 else 0
+
+print(f"Won rewards: {won_rewards}")
+print(f"Lost rewards: {lost_rewards}")
+print(f"Total games: {total_games}")
+print(f"Win rate: {win_rate:.2%}")
+print(f"Rewards won:{won_rewards - lost_rewards}")
