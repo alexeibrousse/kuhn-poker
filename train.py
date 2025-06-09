@@ -24,17 +24,13 @@ def encode_state(state: dict) -> np.ndarray:
     card_vec = [0, 0, 0]
     card_vec[hand -1] = 1
 
-    actions =["check", "call", "bet", "fold", "none"] # none is a placeholder to fill in the first three actions of the history. 
-    history_vec = []
+    action_index = {"check": 0, "call": 1, "bet": 2, "fold": 3, "none": 4}
+    history_mat = np.zeros((3,5), dtype= int)
 
     for i in range(3): # 3 slots as 3 actions max per round.
-        if i<len(history):
-            action = history[i]
-        else:
-            action = "none"
-        history_vec.extend([1 if action == a else 0 for a in actions]) #History of round ongoing
-
-    return np.array(card_vec + [player] + history_vec)
+        action = history[i] if i < len(history) else "none"
+        history_mat[i, action_index[action]] = 1     
+    return np.concatenate([card_vec, [player], history_mat.ravel()]) #History of ongoing round
 
 
 def nnbot(state: dict) -> tuple: # Playing the round for the neural network

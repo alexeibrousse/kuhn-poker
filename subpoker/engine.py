@@ -36,9 +36,14 @@ class KuhnPokerEnv:
             return ["call", "fold"]
         if self.history == ["check", "bet"]:
             return ["call", "fold"]
-
-        return []
     
+        mapping ={
+            tuple():["check", "bet"],
+            ("check",): ["check", "bet"],
+            ("bet",): ["call", "fold"],
+            ("check","bet"): ["call", "fold"]
+            }
+        return mapping.get(tuple(self.history),[])
     
     def step(self, action: str) -> tuple:
         """
