@@ -8,26 +8,34 @@ env = KuhnPokerEnv()
 state = env.reset()
 
 n_epochs = 50000
-nn = NeuralNet(input_size=4, hidden_size=200, output_size=3, learning_rate=0.0001)
+# input_size: 3 card bits + 1 player bit + 3*5 history encoding
+nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=0.0001)
 rbb = RuleBasedAgent()
 
 
 def encode_state(state):
-    """
-    Converts a player's hand into a one-hot vector.
-    Jack -> [1, 0, 0]
-    Queen -> [1, 1, 0]
-    King -> [1, 0, 1]
-    Position is either 0 or 1
+    """Encode the environment state into a neural network input vector."""
 
-    """
     hand = state["hand"]
     player = state["player"]
+    history = state["history"]
 
-    one_hot_card = [0, 0, 0]
-    one_hot_card[hand -1] = 1
+    # one-hot encode the private card
+    card_vec = [0, 0, 0]
+    card_vec[hand - 1] = 1
 
-    return np.array(one_hot_card + [player])
+    # Encode up to the first three actions in history. Each position is one-hot
+    # over [check, bet, call, fold, none]
+    actions = ["check", "bet", "call", "fold", "none"]
+    hist_vec = []
+    for i in range(3):
+        if i < len(history):
+            act = history[i]
+        else:
+            act = "none"
+        hist_vec.extend([1 if act == a else 0 for a in actions])
+
+    return np.array(card_vec + [player] + hist_vec)
 
 
 def nnbot(state): # Playing the round for the neural network
@@ -75,40 +83,57 @@ def nnbot(state): # Playing the round for the neural network
     return real_action, X, probs, action_index
 
 
-rewards = []
+episode_rewards = []
 average_rewards = []
 big_ave = []
+baseline = 0.0
 
 for e in range(n_epochs):
     state = env.reset()
     done = False
-    training_data = None
+    trajectory = []
     reward = 0
 
     while not done:
         if state["player"] == 0:
             action, X, probs, action_index = nnbot(state)
-            training_data = (X, action_index, probs)
+            trajectory.append((X, action_index, probs))
         else:
             legal = env.legal_actions()
             action = rbb.act(state, legal)
 
-        state, rewards, done, _ = env.step(action)
-        reward = rewards[0]
+        state, step_rewards, done, _ = env.step(action)
+        reward = step_rewards[0]
 
-    if training_data is not None:
-        X, action_index, probs = training_data
-        grads = nn.backward(X, action_index, reward, probs)
-        dW1, db1, dW2, db2 = grads
+    baseline = 0.99 * baseline + 0.01 * reward
+
+    if trajectory:
+        dW1 = np.zeros_like(nn.W1)
+        db1 = np.zeros_like(nn.b1)
+        dW2 = np.zeros_like(nn.W2)
+        db2 = np.zeros_like(nn.b2)
+        advantage = reward - baseline
+        for X, action_index, probs in trajectory:
+            gW1, gb1, gW2, gb2 = nn.backward(X, action_index, advantage, probs)
+            dW1 += gW1
+            db1 += gb1
+            dW2 += gW2
+            db2 += gb2
+
+        dW1 /= len(trajectory)
+        db1 /= len(trajectory)
+        dW2 /= len(trajectory)
+        db2 /= len(trajectory)
         nn.update(dW1, db1, dW2, db2)
-        rewards.append(reward)
 
-    if e % 1000 == 0 and rewards:
-        avg = np.mean(rewards[-1000:])
+    episode_rewards.append(reward)
+
+    if e % 1000 == 0 and episode_rewards:
+        avg = np.mean(episode_rewards[-1000:])
         average_rewards.append(avg)
-    
-    if e % 5000 == 0 and rewards:
-        aver = np.mean(rewards[-5000:])
+
+    if e % 5000 == 0 and episode_rewards:
+        aver = np.mean(episode_rewards[-5000:])
         big_ave.append(aver)
 
 
