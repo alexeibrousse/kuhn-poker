@@ -2,15 +2,15 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from subpoker.engine import KuhnPokerEnv 
-from subpoker.agents import RuleBasedAgent
+from subpoker.agents import BluffAgent, RuleBasedAgent, RandomAgent
 from subpoker.neural_net import NeuralNet
 
 env = KuhnPokerEnv()
 state = env.reset()
 
-n_epochs = 50000
-nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=1e-4)
-agent = RuleBasedAgent()
+n_epochs = 100000
+nn = NeuralNet(input_size=19, hidden_size=50, output_size=3, learning_rate=1e-4)
+agent = RandomAgent()
 
 
 def encode_state(state: dict) -> np.ndarray:
@@ -80,16 +80,28 @@ def nnbot(state: dict) -> tuple: # Playing the round for the neural network
 
 
 
+# Data Gathering
+
 action_log = {
     1:{"check": 0, "call":0, "bet": 0, "fold": 0},
     2:{"check": 0, "call":0, "bet": 0, "fold": 0},
     3:{"check": 0, "call":0, "bet": 0, "fold": 0},
 }
-win_loss_log = {"won 1": 0, "won 2": 0, "lost 1": 0, "lost 2": 0}
+
+win_loss_log = {
+    "wins": 0,
+    "losses": 0,
+    "reward_won": 0,
+    "reward_lost": 0,
+}
+
+
 
 episode_rewards = [] # Rewards after one round
 average_rewards = []
 baseline= 0.0
+
+# Beginning of the training
 
 for e in range(n_epochs):
     state = env.reset()
@@ -102,7 +114,7 @@ for e in range(n_epochs):
             action, X, probs, action_index = nnbot(state)
             trajectory.append((X, action_index, probs))
             hand = state["hand"]
-            action_log[hand][action] +=1
+            action_log[hand][action] += 1
         else:
             legal = env.legal_actions()
             action = agent.act(state, legal)
@@ -110,17 +122,15 @@ for e in range(n_epochs):
         state, step_rewards, done, _ = env.step(action)
         reward = step_rewards[0]
     
-    if done and e > 1000 : #Win/lost count starting from 1000 episodes
-        if reward ==1:
-            win_loss_log["won 1"] += 1
-        elif reward ==2:
-            win_loss_log["won 2"] += 1
-        elif reward ==-1:
-            win_loss_log["lost 1"] += 1
+    if done:
+        if reward > 0:
+            win_loss_log["wins"] += 1
+            win_loss_log["reward_won"] += reward
         else:
-            win_loss_log["lost 2"] += 1
+            win_loss_log["losses"] += 1
+            win_loss_log["reward_lost"] += -reward
 
-    baseline = 0.99 * baseline + 0.01 * reward # Update the baseline to reduce variance for backpropagation.
+    baseline = 0.90 * baseline + 0.10 * reward # Update the baseline to reduce variance for backpropagation.
 
     if trajectory:
         dW1 = np.zeros_like(nn.W1) # Sum of all gradients in one episode.
@@ -129,9 +139,9 @@ for e in range(n_epochs):
         db2 = np.zeros_like(nn.b2)
 
         advantage = reward - baseline
-
+    
         for X, action_index, probs in trajectory:
-            gW1, gb1, gW2, gb2 = nn.backward(X, action_index, advantage, probs) # Gradients for single step.
+            gW1, gb1, gW2, gb2 = nn.backward(X, action_index, advantage, probs, e, n_epochs) # Gradients for single step.
             dW1 += gW1 
             db1 += gb1
             dW2 += gW2
@@ -147,14 +157,14 @@ for e in range(n_epochs):
 
     
 
-    if e % 1000 == 0 and episode_rewards:
-        avg = np.mean(episode_rewards[-1000:])
+    if e % 500 == 0 and episode_rewards:
+        avg = np.mean(episode_rewards[-500:])
         average_rewards.append(avg)
 
 
-plt.plot(range(0, n_epochs, 1000), average_rewards)
+plt.plot(range(0, n_epochs, 500), average_rewards)
 plt.xlabel("Epoch")
-plt.ylabel("Average Reward (last 1000)")
+plt.ylabel("Average Reward (last 500)")
 plt.title("Neural Network Learning Progress")
 plt.grid(True)
 plt.show()
@@ -167,14 +177,16 @@ df.index.name = "Hand"
 print(df)
 print()
 
-# Display win/loss stats
-won_rewards = win_loss_log["won 1"] + 2 * win_loss_log["won 2"]
-lost_rewards = win_loss_log["lost 1"] + 2 * win_loss_log["lost 2"]
-total_games = win_loss_log["won 1"] + win_loss_log["won 2"] + win_loss_log["lost 1"] + win_loss_log["lost 2"]
-win_rate = (win_loss_log["won 1"] + win_loss_log["won 2"]) / total_games if total_games > 0 else 0
 
-print(f"Won rewards: {won_rewards}")
+# Display win/loss stats
+
+won_rewards = win_loss_log["reward_won"]
+lost_rewards = win_loss_log["reward_lost"]
+total_games = win_loss_log["wins"] + win_loss_log["losses"]
+win_rate = win_loss_log["wins"] / total_games if total_games > 0 else 0
+
+
 print(f"Lost rewards: {lost_rewards}")
 print(f"Total games: {total_games}")
 print(f"Win rate: {win_rate:.2%}")
-print(f"Rewards won:{won_rewards - lost_rewards}")
+print(f"Rewards won: {won_rewards - lost_rewards}")

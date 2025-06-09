@@ -42,7 +42,7 @@ class NeuralNet():
         return e_X / np.sum(e_X)
 
 
-    def backward(self,X, action_taken, advantage, probs):
+    def backward(self,X, action_taken, advantage, probs, e, n_epochs):
         """
         Computes gradients for all network parameters using REINFORCE method.
 
@@ -51,6 +51,10 @@ class NeuralNet():
         advantage (float): Reward signal
         probs (np.ndarray): Output probabilities from forward().
         """
+        entropy = -np.sum(probs * np.log(probs + 1e-10))
+        entropy_weight = max(0.01 * (1 - e / n_epochs), 0.001)
+
+        advantage += entropy_weight * entropy
 
         dlog = probs.copy()
         dlog[action_taken] -= 1
