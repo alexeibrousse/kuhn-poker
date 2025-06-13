@@ -71,7 +71,6 @@ def main():
     avg_reward_p0 = df["reward_p0"].mean()
     avg_reward_p1 = df["reward_p1"].mean()
 
-    print(f"Results saved to {args.output}")
     print(f"Player 0 ({args.agent1}) wins: {win_counts.get(0, 0)}")
     print(f"Player 1 ({args.agent2}) wins: {win_counts.get(1, 0)}")
     print(f"Average reward P0: {avg_reward_p0:.3f}")
