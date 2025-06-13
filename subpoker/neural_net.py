@@ -51,10 +51,6 @@ class NeuralNet():
         advantage (float): Reward signal
         probs (np.ndarray): Output probabilities from forward().
         """
-        entropy = -np.sum(probs * np.log(probs + 1e-10))
-        entropy_weight = max(0.01 * (1 - e / n_epochs), 0.001)
-
-        advantage += entropy_weight * entropy
 
         dlog = probs.copy()
         dlog[action_taken] -= 1

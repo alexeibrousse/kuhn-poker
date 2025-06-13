@@ -1,16 +1,22 @@
+import os
+import sys
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
+# Ensure the parent directory is in the path for module imports
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from subpoker.engine import KuhnPokerEnv 
-from subpoker.agents import BluffAgent, RuleBasedAgent, RandomAgent
+from subpoker.agents import NashAgent, RuleBasedAgent, RandomAgent
 from subpoker.neural_net import NeuralNet
 
 env = KuhnPokerEnv()
 state = env.reset()
 
-n_epochs = 100000
-nn = NeuralNet(input_size=19, hidden_size=50, output_size=3, learning_rate=1e-4)
-agent = RandomAgent()
+n_epochs = 200000
+nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=5e-4)
+agent = NashAgent()
 
 
 def encode_state(state: dict) -> np.ndarray:
