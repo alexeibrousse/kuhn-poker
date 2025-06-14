@@ -1,5 +1,7 @@
 import os
 import sys
+import json
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,9 +9,12 @@ import matplotlib.pyplot as plt
 # Ensure the parent directory is in the path for module imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from subpoker.engine import KuhnPokerEnv 
-from subpoker.agents import NashAgent, RuleBasedAgent, RandomAgent
+from subpoker.engine import KuhnPokerEnv
+from subpoker.agents import NashAgent
 from subpoker.neural_net import NeuralNet
+
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Data")
+os.makedirs(DATA_DIR, exist_ok=True)
 
 env = KuhnPokerEnv()
 state = env.reset()
@@ -17,6 +22,18 @@ state = env.reset()
 n_epochs = 200000
 nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=5e-4)
 agent = NashAgent()
+
+# Record metadata about the network configuration
+metadata = {
+    "implementation": "numpy",
+    "input_size": nn.input_size,
+    "hidden_size": nn.hidden_size,
+    "activation": "ReLU",
+    "learning_rate": nn.lr,
+    "output_size": nn.output_size,
+}
+with open(os.path.join(DATA_DIR, "network_config.json"), "w", encoding="utf-8") as f:
+    json.dump(metadata, f, indent=2)
 
 
 def encode_state(state: dict) -> np.ndarray:
@@ -86,13 +103,10 @@ def nnbot(state: dict) -> tuple: # Playing the round for the neural network
 
 
 
-# Data Gathering
-
-action_log = {
-    1:{"check": 0, "call":0, "bet": 0, "fold": 0},
-    2:{"check": 0, "call":0, "bet": 0, "fold": 0},
-    3:{"check": 0, "call":0, "bet": 0, "fold": 0},
-}
+# Data gathering
+action_log = pd.DataFrame(
+    0, index=[1, 2, 3], columns=["check", "call", "bet", "fold"], dtype=int
+)
 
 win_loss_log = {
     "wins": 0,
@@ -102,10 +116,12 @@ win_loss_log = {
 }
 
 
-
-episode_rewards = [] # Rewards after one round
+episode_rewards = []  # Rewards after one round
 average_rewards = []
-baseline= 0.0
+baseline = 0.0
+
+log_interval = 1000
+history_records = []
 
 # Beginning of the training
 
@@ -120,7 +136,7 @@ for e in range(n_epochs):
             action, X, probs, action_index = nnbot(state)
             trajectory.append((X, action_index, probs))
             hand = state["hand"]
-            action_log[hand][action] += 1
+            action_log.loc[hand, action] += 1
         else:
             legal = env.legal_actions()
             action = agent.act(state, legal)
@@ -161,11 +177,25 @@ for e in range(n_epochs):
 
     episode_rewards.append(reward)
 
-    
+
 
     if e % 500 == 0 and episode_rewards:
         avg = np.mean(episode_rewards[-500:])
         average_rewards.append(avg)
+
+    if (e + 1) % log_interval == 0:
+        record = {
+            "episode": e + 1,
+            "avg_reward": np.mean(episode_rewards[-log_interval:]),
+            "wins": win_loss_log["wins"],
+            "losses": win_loss_log["losses"],
+        }
+        for hand in (1, 2, 3):
+            for act in ("check", "call", "bet", "fold"):
+                record[f"{hand}_{act}"] = int(action_log.loc[hand, act])
+        history_records.append(record)
+        action_log.loc[:, :] = 0
+        win_loss_log = {"wins": 0, "losses": 0, "reward_won": 0, "reward_lost": 0}
 
 
 plt.plot(range(0, n_epochs, 500), average_rewards)
@@ -173,26 +203,9 @@ plt.xlabel("Epoch")
 plt.ylabel("Average Reward (last 500)")
 plt.title("Neural Network Learning Progress")
 plt.grid(True)
-plt.show()
+plt.tight_layout()
+plt.savefig(os.path.join(DATA_DIR, "learning_curve.png"))
+plt.close()
 
-
-print(np.mean(episode_rewards[-10000:]))
-
-df = pd.DataFrame(action_log)
-df.index.name = "Hand"
-print(df)
-print()
-
-
-# Display win/loss stats
-
-won_rewards = win_loss_log["reward_won"]
-lost_rewards = win_loss_log["reward_lost"]
-total_games = win_loss_log["wins"] + win_loss_log["losses"]
-win_rate = win_loss_log["wins"] / total_games if total_games > 0 else 0
-
-
-print(f"Lost rewards: {lost_rewards}")
-print(f"Total games: {total_games}")
-print(f"Win rate: {win_rate:.2%}")
-print(f"Rewards won: {won_rewards - lost_rewards}")
+df_history = pd.DataFrame(history_records)
+df_history.to_csv(os.path.join(DATA_DIR, "training_history.csv"), index=False)
