@@ -42,7 +42,7 @@ class NeuralNet():
         return e_X / np.sum(e_X)
 
 
-    def backward(self,X, action_taken, advantage, probs, e, n_epochs):
+    def backward(self,X, action_taken, advantage, probs):
         """
         Computes gradients for all network parameters using REINFORCE method.
 

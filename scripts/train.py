@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
 from subpoker.agents import NashAgent
+
 from subpoker.neural_net import NeuralNet
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Data")
@@ -163,7 +164,7 @@ for e in range(n_epochs):
         advantage = reward - baseline
     
         for X, action_index, probs in trajectory:
-            gW1, gb1, gW2, gb2 = nn.backward(X, action_index, advantage, probs, e, n_epochs) # Gradients for single step.
+            gW1, gb1, gW2, gb2 = nn.backward(X, action_index, advantage, probs) # Gradients for single step.
             dW1 += gW1 
             db1 += gb1
             dW2 += gW2
@@ -209,3 +210,9 @@ plt.close()
 
 df_history = pd.DataFrame(history_records)
 df_history.to_csv(os.path.join(DATA_DIR, "training_history.csv"), index=False)
+
+print(f"Lost rewards: {lost_rewards}")
+print(f"Total games: {total_games}")
+print(f"Win rate: {win_rate:.2%}")
+print(f"Rewards won: {won_rewards - lost_rewards}")
+

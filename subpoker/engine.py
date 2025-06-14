@@ -25,18 +25,7 @@ class KuhnPokerEnv:
         There are only four cases possible.
         If called at the end or when not supposed to, returns an empty list.
         """
-        if self.terminal:
-            return []
 
-        if self.history == []:
-            return ["check", "bet"]
-        if self.history == ["check"]:
-            return ["check", "bet"]
-        if self.history == ["bet"]:
-            return ["call", "fold"]
-        if self.history == ["check", "bet"]:
-            return ["call", "fold"]
-    
         mapping ={
             tuple():["check", "bet"],
             ("check",): ["check", "bet"],
