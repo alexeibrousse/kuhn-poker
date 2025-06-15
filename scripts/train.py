@@ -193,7 +193,7 @@ for e in range(n_epochs):
         }
         for hand in (1, 2, 3):
             for act in ("check", "call", "bet", "fold"):
-                record[f"{hand}_{act}"] = int(action_log.loc[hand, act])
+                record[f"{hand}_{act}"] = int(action_log.loc[hand, act]) # type: ignore
         history_records.append(record)
         action_log.loc[:, :] = 0
         win_loss_log = {"wins": 0, "losses": 0, "reward_won": 0, "reward_lost": 0}
@@ -210,9 +210,3 @@ plt.close()
 
 df_history = pd.DataFrame(history_records)
 df_history.to_csv(os.path.join(DATA_DIR, "training_history.csv"), index=False)
-
-print(f"Lost rewards: {lost_rewards}")
-print(f"Total games: {total_games}")
-print(f"Win rate: {win_rate:.2%}")
-print(f"Rewards won: {won_rewards - lost_rewards}")
-
