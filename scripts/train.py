@@ -29,6 +29,7 @@ state = env.reset()
 n_epochs = 50000
 nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=1e-4)
 agent = RuleBasedAgent()
+player_number = 0
 
 # Record metadata about the network configuration
 metadata = {
@@ -39,7 +40,8 @@ metadata = {
     "learning_rate": nn.lr,
     "output_size": nn.output_size,
     "n_epochs": n_epochs,
-    "agent": agent.name
+    "agent": agent.name,
+    "player": player_number
 }
 with open(os.path.join(RUN_DIR, "config.json"), "w", encoding="utf-8") as f:
     json.dump(metadata, f, indent=2)
@@ -83,8 +85,7 @@ def nnbot(state: dict) -> tuple: # Playing the round for the neural network
     chosen_actions = [action_map[i] for i in legal_indices] # Keep the legal actions
     chosen_indices = legal_indices # For clarity
 
-
-    probs  = nn.forward(X)
+    probs = nn.forward(X)
     filtered_probs = probs[chosen_indices] # Removing the probabilities of illegal actions
     
     total = np.sum(filtered_probs)
@@ -124,6 +125,12 @@ win_loss_log = {
     "reward_lost": 0,
 }
 
+# Additional counters for bluff and fold analysis
+bluff_wins = 0
+bluff_losses = 0
+bets_by_us = 0
+folds_after_our_bet = 0
+
 
 episode_rewards = []  # Rewards after one round
 average_rewards = []
@@ -138,13 +145,23 @@ for e in range(n_epochs):
     done = False
     trajectory = []
     reward = 0
+    bet_bluff = False
+    last_was_bet_by_us = False
+
 
     while not done:
-        if state["player"] == 0:
+        if state["player"] == player_number:
             action, X, probs, action_index = nnbot(state)
             trajectory.append((X, action_index, probs))
             hand = state["hand"]
             action_log.loc[hand, action] += 1
+            if action == "bet":
+                bets_by_us += 1
+                last_was_bet_by_us = True
+                if hand in (1, 2):
+                    bet_bluff = True
+            else:
+                last_was_bet_by_us = False
         else:
             legal = env.legal_actions()
             action = agent.act(state, legal)
@@ -159,6 +176,13 @@ for e in range(n_epochs):
         else:
             win_loss_log["losses"] += 1
             win_loss_log["reward_lost"] += -reward
+        
+        if bet_bluff:
+            if reward > 0:
+                bluff_wins += 1
+            elif reward < 0:
+                bluff_losses += 1
+
 
     baseline = 0.90 * baseline + 0.10 * reward # Update the baseline to reduce variance for backpropagation.
 
@@ -186,7 +210,6 @@ for e in range(n_epochs):
     episode_rewards.append(reward)
 
 
-
     if (e + 1) % log_interval == 0:
         avg = np.mean(episode_rewards[-log_interval:])
         average_rewards.append(avg)
@@ -204,6 +227,59 @@ for e in range(n_epochs):
         win_loss_log = {"wins": 0, "losses": 0, "reward_won": 0, "reward_lost": 0}
 
 
+
+# Creating csv file
+df_history = pd.DataFrame(history_records)
+df_history.to_csv(os.path.join(RUN_DIR, "training_history.csv"), index=False)
+
+
+# Calculating statistics
+total_reward = sum(episode_rewards)
+total_wins = sum(r > 0 for r in episode_rewards)
+total_losses = sum(r < 0 for r in episode_rewards)
+win_rate = total_wins / (total_wins + total_losses)
+last_10pct_index = int(len(episode_rewards) * 0.9)
+avg_reward_last_10pct = float(np.mean(episode_rewards[last_10pct_index:]))
+
+# Bluff rates
+if not df_history.empty:
+    recent_rows = max(1, int(len(df_history) * 0.1))
+    recent = df_history.tail(recent_rows)
+    bluff_bets = (recent["1_bet"] + recent["2_bet"]).sum()
+    action_cols = [f"{h}_{a}" for h in (1, 2) for a in ("check", "call", "bet", "fold")]
+    bluff_denominator = recent[action_cols].sum().sum()
+    bluff_rate_last_10pct = float(bluff_bets / bluff_denominator) if bluff_denominator else 0.0
+else:
+    bluff_rate_last_10pct = 0.0
+bluff_win_rate = bluff_wins / (bluff_wins + bluff_losses) if (bluff_wins + bluff_losses) > 0 else 0.0
+
+fold_frequency = folds_after_our_bet / bets_by_us if bets_by_us else 0.0
+
+
+
+summary = {
+    "total_reward": total_reward,
+    "total_wins": total_wins,
+    "total_losses": total_losses,
+    "win_rate": win_rate,
+    "avg_reward_last_10pct": avg_reward_last_10pct,
+    "bluff_rate_last_10pct": bluff_rate_last_10pct,
+    "bluff_wins": bluff_wins,
+    "bluff_losses": bluff_losses,
+    "bluff_win_rate": bluff_win_rate,
+    "fold_frequency_after_bet": fold_frequency,
+}
+
+for k, v in summary.items():
+    if isinstance(v, float):
+        summary[k] = round(v, 3)
+
+with open(os.path.join(RUN_DIR, "training_summary.json"), "w", encoding="utf-8") as f:
+    json.dump(summary, f, indent=2)
+
+
+
+# Plotting learning curve
 plt.plot(range(log_interval, n_epochs + 1, log_interval), average_rewards)
 plt.xlabel("Episode")
 plt.ylabel("Average Reward (last %d)" % log_interval)
@@ -214,11 +290,5 @@ plt.savefig(os.path.join(RUN_DIR, "learning_curve.png"))
 plt.close()
 
 
-df_history = pd.DataFrame(history_records)
-df_history.to_csv(os.path.join(RUN_DIR, "training_history.csv"), index=False)
-
-
 script_path = os.path.join(os.path.dirname(__file__), "analyze_training.py")
 subprocess.run([sys.executable, script_path, RUN_DIR], check=True)
-
-
