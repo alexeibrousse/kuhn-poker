@@ -120,7 +120,7 @@ win_loss_log = {
 episode_rewards = []  # Rewards after one round
 average_rewards = []
 baseline = 0.0
-
+interval = 500
 log_interval = 1000
 history_records = []
 
@@ -180,14 +180,14 @@ for e in range(n_epochs):
 
 
 
-    if e % 500 == 0 and episode_rewards:
-        avg = np.mean(episode_rewards[-500:])
+    if e % interval == 0 and episode_rewards:
+        avg = np.mean(episode_rewards[-interval:])
         average_rewards.append(avg)
 
-    if (e + 1) % log_interval == 0:
+    if (e + 1) % interval == 0:
         record = {
             "episode": e + 1,
-            "avg_reward": np.mean(episode_rewards[-log_interval:]),
+            "avg_reward": np.mean(episode_rewards[-interval:]),
             "wins": win_loss_log["wins"],
             "losses": win_loss_log["losses"],
         }
@@ -198,7 +198,7 @@ for e in range(n_epochs):
         action_log.loc[:, :] = 0
         win_loss_log = {"wins": 0, "losses": 0, "reward_won": 0, "reward_lost": 0}
 
-interval = 500
+
 plt.plot(range(0, n_epochs, interval), average_rewards)
 plt.xlabel("Epoch")
 plt.ylabel(f"Average Reward (last {interval})")
