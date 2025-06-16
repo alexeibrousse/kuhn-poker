@@ -1,6 +1,8 @@
 import os
 import sys
 import json
+from datetime import datetime
+import subprocess
 
 import numpy as np
 import pandas as pd
@@ -10,30 +12,36 @@ import matplotlib.pyplot as plt
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
-from subpoker.agents import NashAgent
-
+from subpoker.agents import NashAgent, RuleBasedAgent
 from subpoker.neural_net import NeuralNet
 
+
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Data")
-os.makedirs(DATA_DIR, exist_ok=True)
+RUNS_BASE = os.path.join(DATA_DIR, "numpy-nn")
+os.makedirs(RUNS_BASE, exist_ok=True)
+run_name = datetime.now().strftime("%d-%m-%y_%H-%M")
+RUN_DIR = os.path.join(RUNS_BASE, run_name)
+os.makedirs(RUN_DIR, exist_ok=True)
 
 env = KuhnPokerEnv()
 state = env.reset()
 
-n_epochs = 200000
-nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=5e-4)
-agent = NashAgent()
+n_epochs = 50000
+nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=1e-4)
+agent = RuleBasedAgent()
 
 # Record metadata about the network configuration
 metadata = {
     "implementation": "numpy",
     "input_size": nn.input_size,
-    "hidden_size": nn.hidden_size,
+    "hidden_sizes": [nn.hidden_size],
     "activation": "ReLU",
     "learning_rate": nn.lr,
     "output_size": nn.output_size,
+    "n_epochs": n_epochs,
+    "agent": agent.name
 }
-with open(os.path.join(DATA_DIR, "network_config.json"), "w", encoding="utf-8") as f:
+with open(os.path.join(RUN_DIR, "config.json"), "w", encoding="utf-8") as f:
     json.dump(metadata, f, indent=2)
 
 
@@ -120,8 +128,7 @@ win_loss_log = {
 episode_rewards = []  # Rewards after one round
 average_rewards = []
 baseline = 0.0
-interval = 500
-log_interval = 1000
+log_interval = 500
 history_records = []
 
 # Beginning of the training
@@ -180,14 +187,12 @@ for e in range(n_epochs):
 
 
 
-    if e % interval == 0 and episode_rewards:
-        avg = np.mean(episode_rewards[-interval:])
+    if (e + 1) % log_interval == 0:
+        avg = np.mean(episode_rewards[-log_interval:])
         average_rewards.append(avg)
-
-    if (e + 1) % interval == 0:
         record = {
             "episode": e + 1,
-            "avg_reward": np.mean(episode_rewards[-interval:]),
+            "avg_reward": avg,
             "wins": win_loss_log["wins"],
             "losses": win_loss_log["losses"],
         }
@@ -199,14 +204,21 @@ for e in range(n_epochs):
         win_loss_log = {"wins": 0, "losses": 0, "reward_won": 0, "reward_lost": 0}
 
 
-plt.plot(range(0, n_epochs, interval), average_rewards)
-plt.xlabel("Epoch")
-plt.ylabel(f"Average Reward (last {interval})")
+plt.plot(range(log_interval, n_epochs + 1, log_interval), average_rewards)
+plt.xlabel("Episode")
+plt.ylabel("Average Reward (last %d)" % log_interval)
 plt.title("Neural Network Learning Progress")
 plt.grid(True)
 plt.tight_layout()
-plt.savefig(os.path.join(DATA_DIR, "learning_curve.png"))
+plt.savefig(os.path.join(RUN_DIR, "learning_curve.png"))
 plt.close()
 
+
 df_history = pd.DataFrame(history_records)
-df_history.to_csv(os.path.join(DATA_DIR, "training_history.csv"), index=False)
+df_history.to_csv(os.path.join(RUN_DIR, "training_history.csv"), index=False)
+
+
+script_path = os.path.join(os.path.dirname(__file__), "analyze_training.py")
+subprocess.run([sys.executable, script_path, RUN_DIR], check=True)
+
+

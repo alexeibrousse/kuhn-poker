@@ -7,6 +7,9 @@ class Agent():
     
 
 class RuleBasedAgent(Agent):
+    def __init__(self):
+        self.name = "RuleBasedAgent"
+
     def act(self, state: dict, legal_actions: list) -> str:
         """
         Logical rule-based agent:
@@ -39,6 +42,8 @@ class RuleBasedAgent(Agent):
 
 
 class RandomAgent(Agent):
+    def __init__(self):
+        self.name = "RandomAgent"
     """
     This agent returns a random action.
     """
@@ -52,6 +57,7 @@ class BluffAgent(Agent):
 
     def __init__(self, bluff_prob: float = 0.5):
         self.bluff_prob = bluff_prob
+        self.name = "BluffAgent"
 
     def act(self, state: dict, legal_actions: list) -> str:
         hand = state["hand"]
@@ -80,6 +86,9 @@ class BluffAgent(Agent):
 class AlwaysLieAgent(Agent):
     """Agent that inverts normal strength tells and always misrepresents its hand."""
 
+    def __init__(self):
+        self.name = "AlwaysLieAgent"
+    
     def act(self, state: dict, legal_actions: list) -> str:
         hand = state["hand"]
 
@@ -125,7 +134,8 @@ class NashAgent(Agent):
         if not 0 <= alpha <= 1/3:
             raise ValueError("alpha must be between 0 and 1/3")
         self.alpha = alpha
-
+        self.name = f"NashAgent(alpha={alpha})"
+    
     def act(self, state: dict, legal_actions: list) -> str:
         hand = state["hand"]
         history = state["history"]
