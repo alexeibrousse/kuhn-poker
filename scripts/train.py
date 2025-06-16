@@ -198,10 +198,10 @@ for e in range(n_epochs):
         action_log.loc[:, :] = 0
         win_loss_log = {"wins": 0, "losses": 0, "reward_won": 0, "reward_lost": 0}
 
-
-plt.plot(range(0, n_epochs, 500), average_rewards)
+interval = 500
+plt.plot(range(0, n_epochs, interval), average_rewards)
 plt.xlabel("Epoch")
-plt.ylabel("Average Reward (last 500)")
+plt.ylabel(f"Average Reward (last {interval})")
 plt.title("Neural Network Learning Progress")
 plt.grid(True)
 plt.tight_layout()
