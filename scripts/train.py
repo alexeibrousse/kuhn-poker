@@ -30,6 +30,7 @@ parser.add_argument("--seed", type=int, default=None, help="Random seed for repr
 args = parser.parse_args()
 
 used_seed = args.seed if args.seed is not None else random.randint(0, 2**32 -1)
+used_seed = 2878524323
 
 random.seed(used_seed)
 np.random.seed(used_seed)
@@ -37,8 +38,10 @@ np.random.seed(used_seed)
 env = KuhnPokerEnv(used_seed)
 state = env.reset()
 
-n_epochs = 50000
-nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=1e-6)
+
+n_epochs = 100000
+log_interval = 1000
+nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-6)
 agent = RuleBasedAgent()
 player_number = 0
 
@@ -51,6 +54,7 @@ metadata = {
     "learning_rate": nn.lr,
     "output_size": nn.output_size,
     "n_epochs": n_epochs,
+    "log_interval": log_interval,
     "agent": agent.name,
     "player": player_number,
     "seed": used_seed,
@@ -147,7 +151,6 @@ folds_after_our_bet = 0
 episode_rewards = []  # Rewards after one round
 average_rewards = []
 baseline = 0.0
-log_interval = 2000
 history_records = [] # Summary for analysis
 episode_history = [] # Full history of episodes
 

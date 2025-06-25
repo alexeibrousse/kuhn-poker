@@ -17,7 +17,7 @@ class KuhnPokerEnv:
     
         self.hands = [self.deck[0], self.deck[1]]
         self.pot = 2
-        self.bets = [0, 0]
+        self.bets = [1, 1]
         self.history = []
         self.current_player = self._rng.choice([0,1])
         self.terminal = False
@@ -76,12 +76,12 @@ class KuhnPokerEnv:
             self.winner = 0 if self.hands[0] > self.hands[1] else 1
 
         done = self.terminal # True if game is over
-        rewards = [0, 0]
+        rewards = [1, 1]
 
         # Assign rewards once game is over
         if done:
-            rewards[self.winner] = self.pot # type: ignore
-            rewards[1 - self.winner] = -self.pot # type: ignore
+            rewards[self.winner] = self.bets[1 - self.winner]            # type: ignore
+            rewards[1 - self.winner] = - self.bets[1 - self.winner]      # type: ignore
         
         return self.get_state(), rewards, done, {}
     
