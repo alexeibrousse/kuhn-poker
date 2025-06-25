@@ -1,7 +1,14 @@
 import random
+from typing import Optional
+
 
 class KuhnPokerEnv:
-    def __init__(self):
+    def __init__(self, seed: Optional[int] = None):
+        """
+        The optional seed parameter is used for reproductibility, making the game deterministic.
+        If not provided, a random seed is used.
+        """
+        self._rng = random.Random(seed)
         self.reset()
     
     def reset(self):
@@ -12,7 +19,7 @@ class KuhnPokerEnv:
         self.pot = 2
         self.bets = [0, 0]
         self.history = []
-        self.current_player = random.choice([0,1])
+        self.current_player = self._rng.choice([0,1])
         self.terminal = False
         self.winner = None
 

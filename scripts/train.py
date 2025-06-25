@@ -3,6 +3,8 @@ import sys
 import json
 from datetime import datetime
 import subprocess
+import argparse
+import random
 
 import numpy as np
 import pandas as pd
@@ -23,7 +25,15 @@ run_name = datetime.now().strftime("%d-%m-%y_%H-%M")
 RUN_DIR = os.path.join(RUNS_BASE, run_name)
 os.makedirs(RUN_DIR, exist_ok=True)
 
-env = KuhnPokerEnv()
+parser = argparse.ArgumentParser(description="Train the neural network agent")
+parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
+args = parser.parse_args()
+
+if args.seed is not None:
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+
+env = KuhnPokerEnv(seed=args.seed)
 state = env.reset()
 
 n_epochs = 50000
@@ -41,7 +51,8 @@ metadata = {
     "output_size": nn.output_size,
     "n_epochs": n_epochs,
     "agent": agent.name,
-    "player": player_number
+    "player": player_number,
+    "seed": args.seed,
 }
 with open(os.path.join(RUN_DIR, "config.json"), "w", encoding="utf-8") as f:
     json.dump(metadata, f, indent=2)
@@ -136,7 +147,8 @@ episode_rewards = []  # Rewards after one round
 average_rewards = []
 baseline = 0.0
 log_interval = 500
-history_records = []
+history_records = [] # Summary for analysis
+episode_history = [] # Full history of episodes
 
 # Beginning of the training
 
@@ -209,6 +221,11 @@ for e in range(n_epochs):
 
     episode_rewards.append(reward)
 
+    episode_history.append({"episode": e + 1, "hand": env.hands[player_number], 
+                            "opp_hand": env.hands[1 - player_number], 
+                            "history": "-".join(env.history), 
+                            "reward": reward})
+
 
     if (e + 1) % log_interval == 0:
         avg = np.mean(episode_rewards[-log_interval:])
@@ -227,10 +244,14 @@ for e in range(n_epochs):
         win_loss_log = {"wins": 0, "losses": 0, "reward_won": 0, "reward_lost": 0}
 
 
+# Creating full csv file
+df_full = pd.DataFrame(episode_history)
+df_full.to_csv(os.path.join(RUN_DIR, "full_episode_history.csv"), index=False)
 
-# Creating csv file
+# Creating summary csv file
 df_history = pd.DataFrame(history_records)
 df_history.to_csv(os.path.join(RUN_DIR, "training_history.csv"), index=False)
+
 
 
 # Calculating statistics
