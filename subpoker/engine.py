@@ -13,8 +13,8 @@ class KuhnPokerEnv:
     
     def reset(self):
         self.deck = [1, 2, 3] # Cards J, Q, K
-        random.shuffle(self.deck)
-    
+        self._rng.shuffle(self.deck)    
+           
         self.hands = [self.deck[0], self.deck[1]]
         self.pot = 2
         self.bets = [1, 1]
@@ -75,13 +75,13 @@ class KuhnPokerEnv:
         if self.terminal and self.winner is None:
             self.winner = 0 if self.hands[0] > self.hands[1] else 1
 
-        done = self.terminal # True if game is over
+        done = self.terminal  # True if game is over
         rewards = [1, 1]
 
         # Assign rewards once game is over
         if done:
-            rewards[self.winner] = self.bets[1 - self.winner]            # type: ignore
-            rewards[1 - self.winner] = - self.bets[1 - self.winner]      # type: ignore
+            rewards[self.winner] = self.pot - self.bets[self.winner]     # type: ignore
+            rewards[1 - self.winner] = -self.bets[1 - self.winner]       # type: ignore
         
         return self.get_state(), rewards, done, {}
     
@@ -92,14 +92,6 @@ class KuhnPokerEnv:
         """
         return self.terminal
     
-
-    def get_reward(self) -> list:
-        """ Returns a vector for both players. Only valid if game is over. """
-        if not self.terminal:
-            return [0, 0]
-        return [self.pot if i == self.winner else -self.pot for i in (0,1)]
-    
-
     def get_state(self) -> dict:
         """
         Return a dict representing the current observable state for the active player:
@@ -114,7 +106,8 @@ class KuhnPokerEnv:
             'hand': self.hands[self.current_player],
             'history': list(self.history),
             'pot': self.pot,
-            'bets': list(self.bets)
+            'bets': list(self.bets),
+            'terminal': self.terminal
         }
     
 

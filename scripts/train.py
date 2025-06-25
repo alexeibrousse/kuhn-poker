@@ -39,7 +39,7 @@ env = KuhnPokerEnv(used_seed)
 state = env.reset()
 
 
-n_epochs = 100000
+n_epochs = 50000
 log_interval = 1000
 nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-6)
 agent = RuleBasedAgent()
