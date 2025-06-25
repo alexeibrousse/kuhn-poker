@@ -29,15 +29,16 @@ parser = argparse.ArgumentParser(description="Train the neural network agent")
 parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
 args = parser.parse_args()
 
-if args.seed is not None:
-    random.seed(args.seed)
-    np.random.seed(args.seed)
+used_seed = args.seed if args.seed is not None else random.randint(0, 2**32 -1)
 
-env = KuhnPokerEnv(seed=args.seed)
+random.seed(used_seed)
+np.random.seed(used_seed)
+
+env = KuhnPokerEnv(used_seed)
 state = env.reset()
 
 n_epochs = 50000
-nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=1e-4)
+nn = NeuralNet(input_size=19, hidden_size=200, output_size=3, learning_rate=1e-6)
 agent = RuleBasedAgent()
 player_number = 0
 
@@ -52,7 +53,7 @@ metadata = {
     "n_epochs": n_epochs,
     "agent": agent.name,
     "player": player_number,
-    "seed": args.seed,
+    "seed": used_seed,
 }
 with open(os.path.join(RUN_DIR, "config.json"), "w", encoding="utf-8") as f:
     json.dump(metadata, f, indent=2)
@@ -146,7 +147,7 @@ folds_after_our_bet = 0
 episode_rewards = []  # Rewards after one round
 average_rewards = []
 baseline = 0.0
-log_interval = 500
+log_interval = 2000
 history_records = [] # Summary for analysis
 episode_history = [] # Full history of episodes
 
@@ -291,9 +292,9 @@ summary = {
     "fold_frequency_after_bet": fold_frequency,
 }
 
-for k, v in summary.items():
-    if isinstance(v, float):
-        summary[k] = round(v, 3)
+for key, value in summary.items():
+    if isinstance(value, float):
+        summary[key] = round(value, 3)
 
 with open(os.path.join(RUN_DIR, "training_summary.json"), "w", encoding="utf-8") as f:
     json.dump(summary, f, indent=2)
