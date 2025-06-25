@@ -312,7 +312,7 @@ plt.ylabel("Average Reward (last %d)" % log_interval)
 plt.title("Neural Network Learning Progress")
 plt.grid(True)
 plt.tight_layout()
-plt.savefig(os.path.join(RUN_DIR, "learning_curve.png"))
+plt.savefig(os.path.join(RUN_DIR, "learning_curve.pdf"))
 plt.close()
 
 
