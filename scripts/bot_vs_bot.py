@@ -48,7 +48,6 @@ def main():
         random.seed(args.seed)
         np.random.seed(args.seed)
 
-    args = parse_args()
     agent1 = make_agent(args.agent1)
     agent2 = make_agent(args.agent2)
     agents = [agent1, agent2]
@@ -98,7 +97,7 @@ def main():
     print(f"Average reward P1: {avg_reward_p1:.3f}")
 
     df.to_csv(args.history_output, index=False)
-    pd.DataFrame([summary]).to_csv(args.output, index=False)
+    pd.DataFrame([summary]).to_csv(args.summary_output, index=False)
 
 if __name__ == "__main__":
     main()

@@ -30,7 +30,8 @@ parser.add_argument("--seed", type=int, default=None, help="Random seed for repr
 args = parser.parse_args()
 
 used_seed = args.seed if args.seed is not None else random.randint(0, 2**32 -1)
-used_seed = 2878524323
+used_seed = 762523726
+
 
 random.seed(used_seed)
 np.random.seed(used_seed)
@@ -39,9 +40,9 @@ env = KuhnPokerEnv(used_seed)
 state = env.reset()
 
 
-n_epochs = 50000
-log_interval = 1000
-nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-6)
+n_epochs = 2000000
+log_interval = n_epochs // 100
+nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=5e-6)
 agent = RuleBasedAgent()
 player_number = 0
 

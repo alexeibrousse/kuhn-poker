@@ -76,16 +76,28 @@ class KuhnPokerEnv:
             self.winner = 0 if self.hands[0] > self.hands[1] else 1
 
         done = self.terminal  # True if game is over
-        rewards = [1, 1]
+        rewards = [0, 0]
 
         # Assign rewards once game is over
         if done:
-            rewards[self.winner] = self.pot - self.bets[self.winner]     # type: ignore
-            rewards[1 - self.winner] = -self.bets[1 - self.winner]       # type: ignore
+            rewards = self.get_reward()      # type: ignore
         
         return self.get_state(), rewards, done, {}
     
-        
+    def get_reward(self) -> list:
+        """Return net payoff for both players once the game ends."""
+        if not self.terminal:
+            return [0, 0]
+
+        rewards = [0, 0]
+        for i in (0, 1):
+            if i == self.winner:
+                rewards[i] = self.pot - self.bets[i]
+            else:
+                rewards[i] = -self.bets[i]
+        return rewards    
+
+    
     def is_terminal(self) -> bool:
         """
         Returns True if the game is over.
