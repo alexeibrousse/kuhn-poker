@@ -80,7 +80,6 @@ def main():
     avg_reward_p1 = df["reward_p1"].mean()
 
 
-
     summary = {
         "agent1": args.agent1,
         "agent2": args.agent2,
@@ -98,6 +97,3 @@ def main():
 
     df.to_csv(args.history_output, index=False)
     pd.DataFrame([summary]).to_csv(args.summary_output, index=False)
-
-if __name__ == "__main__":
-    main()

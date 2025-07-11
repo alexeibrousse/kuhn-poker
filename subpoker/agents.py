@@ -42,11 +42,12 @@ class RuleBasedAgent(Agent):
 
 
 class RandomAgent(Agent):
-    def __init__(self):
-        self.name = "RandomAgent"
     """
     This agent returns a random action.
     """
+    def __init__(self):
+        self.name = "RandomAgent"
+    
     def act(self, state: dict, legal_actions: list) -> str:
         return random.choice(legal_actions)
 

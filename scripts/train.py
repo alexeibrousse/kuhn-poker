@@ -3,7 +3,6 @@ import sys
 import json
 from datetime import datetime
 import subprocess
-import argparse
 import random
 
 import numpy as np
@@ -18,19 +17,17 @@ from subpoker.agents import NashAgent, RuleBasedAgent
 from subpoker.neural_net import NeuralNet
 
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 RUNS_BASE = os.path.join(DATA_DIR, "numpy-nn")
 os.makedirs(RUNS_BASE, exist_ok=True)
 run_name = datetime.now().strftime("%d-%m-%y_%H-%M")
 RUN_DIR = os.path.join(RUNS_BASE, run_name)
 os.makedirs(RUN_DIR, exist_ok=True)
 
-parser = argparse.ArgumentParser(description="Train the neural network agent")
-parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
-args = parser.parse_args()
 
-used_seed = args.seed if args.seed is not None else random.randint(0, 2**32 -1)
-used_seed = 762523726
+used_seed = random.randint(0, 2**32 -1)
+used_seed = 1862962780 # For reproducibility in testing
+
 
 
 random.seed(used_seed)
@@ -42,7 +39,7 @@ state = env.reset()
 
 n_epochs = 2000000
 log_interval = n_epochs // 100
-nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=5e-6)
+nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-5)
 agent = RuleBasedAgent()
 player_number = 0
 
@@ -51,6 +48,7 @@ metadata = {
     "implementation": "numpy",
     "input_size": nn.input_size,
     "hidden_sizes": [nn.hidden_size],
+    "output_size": nn.output_size,
     "activation": "ReLU",
     "learning_rate": nn.lr,
     "output_size": nn.output_size,
