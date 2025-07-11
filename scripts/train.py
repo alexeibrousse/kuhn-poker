@@ -24,9 +24,8 @@ run_name = datetime.now().strftime("%d-%m-%y_%H-%M")
 RUN_DIR = os.path.join(RUNS_BASE, run_name)
 os.makedirs(RUN_DIR, exist_ok=True)
 
-
-used_seed = random.randint(0, 2**32 -1)
 used_seed = 1862962780 # For reproducibility in testing
+used_seed = random.randint(0, 2**32 -1)
 
 
 
@@ -37,7 +36,7 @@ env = KuhnPokerEnv(used_seed)
 state = env.reset()
 
 
-n_epochs = 2000000
+n_epochs = 500000
 log_interval = n_epochs // 100
 nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-5)
 agent = RuleBasedAgent()
@@ -199,7 +198,7 @@ for e in range(n_epochs):
                 bluff_losses += 1
 
 
-    baseline = 0.90 * baseline + 0.10 * reward # Update the baseline to reduce variance for backpropagation.
+    baseline = baseline * (0.90 + (e / n_epochs)) + reward * (0.10 * (1 - (e / n_epochs))) # Update the baseline to reduce variance and entropy through episodes for backpropagation.
 
     if trajectory:
         dW1 = np.zeros_like(nn.W1) # Sum of all gradients in one episode.
