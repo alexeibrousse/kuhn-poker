@@ -4,17 +4,19 @@ This project implements several agents for Kuhn poker, including a simple neural
 
 ## Training the neural network
 
-Run `scripts/train.py` to train the NumPy-based policy network. The script logs statistics every 1000 episodes and saves them to the `Data` directory:
+Run `scripts/train.py` to train the NumPy-based policy network. The script logs statistics 1000 times per run and saves them to the `Data` directory:
 
 ```
 python scripts/train.py
 ```
 
-Artifacts written to `Data/`:
-
-- `network_config.json` – hyperparameters of the network used during training
-- `training_history.csv` – snapshot of action counts and rewards every 1000 episodes
-- `learning_curve.png` – plot of average reward over time
+Files in `Data/numpy-nn/<timestamped-run>/` include:
+- `config.json` – hyperparameters and run configuration
+- `full_episode_history.csv` – per-episode logs of all moves and rewards
+- `learning_curve.pdf` – plot of average reward over time
+- `strategy_metrics.pdf` – plot of bluff/call/fold trends
+- `training_history.csv` – statistics every N episodes
+- `training_summary.json` – summary metrics from the run
 
 ## Analysing the training history
 
