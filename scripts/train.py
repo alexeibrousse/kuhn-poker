@@ -62,9 +62,9 @@ with open(os.path.join(RUN_DIR, "config.json"), "w", encoding="utf-8") as f:
     json.dump(metadata, f, indent=2)
 
 initial_lr = nn.lr  # Initial learning rate to calculate decayed learning rate
-def decayed_lr(e: int, n_epochs: int) -> None:
+def decayed_lr(e: int) -> None:
     """
-    Returns a decayed learning rate based on the epoch number.
+    Returns a decayed learning rate based on the episode number.
     """
     learning_rate = initial_lr * (1 - e / n_epochs)
     nn.lr = learning_rate
@@ -156,11 +156,13 @@ bets_by_us = 0
 folds_after_our_bet = 0
 
 
-episode_rewards = []  # Rewards after one round
+episode_rewards = []  # Rewards after each round
 average_rewards = []
 baseline = 0.0
 history_records = [] # Summary for analysis
 episode_history = [] # Full history of episodes
+
+
 
 # Beginning of the training
 
@@ -222,7 +224,7 @@ for e in range(n_epochs):
             entropy = -np.sum(probs * np.log(probs + 1e-10)) # Avoiding log(0)
             step_advantage = advantage + entropy_coeff * entropy
 
-            decayed_lr(e, n_epochs) # Decaying the learning rate
+            decayed_lr(e) # Decaying the learning rate
             gW1, gb1, gW2, gb2 = nn.backward(X, action_index, step_advantage, probs) # Gradients for single step.
             dW1 += gW1 
             db1 += gb1
