@@ -24,8 +24,8 @@ run_name = datetime.now().strftime("%d-%m-%y_%H-%M")
 RUN_DIR = os.path.join(RUNS_BASE, run_name)
 os.makedirs(RUN_DIR, exist_ok=True)
 
-used_seed = 1862962780 # For reproducibility in testing
 used_seed = random.randint(0, 2**32 -1)
+used_seed = 1862962780 # For reproducibility in testing
 
 
 
@@ -36,7 +36,7 @@ env = KuhnPokerEnv(used_seed)
 state = env.reset()
 
 
-n_epochs = 500000
+n_epochs = 1000000
 log_interval = n_epochs // 100
 nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-5)
 agent = RuleBasedAgent()
@@ -60,6 +60,14 @@ metadata = {
 }
 with open(os.path.join(RUN_DIR, "config.json"), "w", encoding="utf-8") as f:
     json.dump(metadata, f, indent=2)
+
+initial_lr = nn.lr  # Initial learning rate to calculate decayed learning rate
+def decayed_lr(e: int, n_epochs: int) -> None:
+    """
+    Returns a decayed learning rate based on the epoch number.
+    """
+    learning_rate = initial_lr * (1 - e / n_epochs)
+    nn.lr = learning_rate
 
 
 def encode_state(state: dict) -> np.ndarray:
@@ -125,6 +133,7 @@ def nnbot(state: dict) -> tuple: # Playing the round for the neural network
         real_action = action
 
     return real_action, X, probs, action_index
+
 
 
 
@@ -199,7 +208,7 @@ for e in range(n_epochs):
                 bluff_losses += 1
 
 
-    baseline = baseline * 0.90 + reward * 0.10 # Update the baseline to reduce variance through episodes for backpropagation.
+    baseline = baseline * 0.80 + reward * 0.20 # Update the baseline to reduce variance through episodes for backpropagation.
 
     if trajectory:
         dW1 = np.zeros_like(nn.W1) # Sum of all gradients in one episode.
@@ -213,6 +222,7 @@ for e in range(n_epochs):
             entropy = -np.sum(probs * np.log(probs + 1e-10)) # Avoiding log(0)
             step_advantage = advantage + entropy_coeff * entropy
 
+            decayed_lr(e, n_epochs) # Decaying the learning rate
             gW1, gb1, gW2, gb2 = nn.backward(X, action_index, step_advantage, probs) # Gradients for single step.
             dW1 += gW1 
             db1 += gb1
@@ -285,14 +295,9 @@ fold_frequency = folds_after_our_bet / bets_by_us if bets_by_us else 0.0
 
 
 summary = {
-    "total_reward": total_reward,
-    "total_wins": total_wins,
-    "total_losses": total_losses,
     "win_rate": win_rate,
     "avg_reward_last_10pct": avg_reward_last_10pct,
     "bluff_rate_last_10pct": bluff_rate_last_10pct,
-    "bluff_wins": bluff_wins,
-    "bluff_losses": bluff_losses,
     "bluff_win_rate": bluff_win_rate,
     "fold_frequency_after_bet": fold_frequency,
 }
