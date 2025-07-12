@@ -24,8 +24,8 @@ run_name = datetime.now().strftime("%d-%m-%y_%H-%M")
 RUN_DIR = os.path.join(RUNS_BASE, run_name)
 os.makedirs(RUN_DIR, exist_ok=True)
 
-used_seed = random.randint(0, 2**32 -1)
 used_seed = 1862962780 # For reproducibility in testing
+used_seed = random.randint(0, 2**32 -1)
 
 
 
@@ -36,7 +36,7 @@ env = KuhnPokerEnv(used_seed)
 state = env.reset()
 
 
-n_epochs = 1000000
+n_epochs = 2000000
 log_interval = n_epochs // 100
 nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-5)
 agent = RuleBasedAgent()
