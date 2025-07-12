@@ -41,6 +41,7 @@ log_interval = n_epochs // 100
 nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-5)
 agent = RuleBasedAgent()
 player_number = 0
+entropy_coeff = 0.01 # Coefficient for entropy regularization
 
 # Record metadata about the network configuration
 metadata = {
@@ -50,7 +51,7 @@ metadata = {
     "output_size": nn.output_size,
     "activation": "ReLU",
     "learning_rate": nn.lr,
-    "output_size": nn.output_size,
+    "entropy_coeff": entropy_coeff,
     "n_epochs": n_epochs,
     "log_interval": log_interval,
     "agent": agent.name,
@@ -198,7 +199,7 @@ for e in range(n_epochs):
                 bluff_losses += 1
 
 
-    baseline = baseline * (0.90 + (e / n_epochs)) + reward * (0.10 * (1 - (e / n_epochs))) # Update the baseline to reduce variance and entropy through episodes for backpropagation.
+    baseline = baseline * 0.90 + reward * 0.10 # Update the baseline to reduce variance through episodes for backpropagation.
 
     if trajectory:
         dW1 = np.zeros_like(nn.W1) # Sum of all gradients in one episode.
@@ -209,7 +210,10 @@ for e in range(n_epochs):
         advantage = reward - baseline
     
         for X, action_index, probs in trajectory:
-            gW1, gb1, gW2, gb2 = nn.backward(X, action_index, advantage, probs) # Gradients for single step.
+            entropy = -np.sum(probs * np.log(probs + 1e-10)) # Avoiding log(0)
+            step_advantage = advantage + entropy_coeff * entropy
+
+            gW1, gb1, gW2, gb2 = nn.backward(X, action_index, step_advantage, probs) # Gradients for single step.
             dW1 += gW1 
             db1 += gb1
             dW2 += gW2
