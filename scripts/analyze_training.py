@@ -48,5 +48,3 @@ plt.grid(True)
 plt.tight_layout()
 plt.savefig(os.path.join(run_dir, "strategy_metrics.pdf")) #type: ignore
 plt.close()
-
-
