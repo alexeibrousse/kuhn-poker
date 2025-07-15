@@ -16,4 +16,4 @@ __pycache__/
 *.log
 
 # Experiment outputs
-Data/
+data/
