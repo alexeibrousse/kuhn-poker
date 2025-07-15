@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
 from subpoker.agents import NashAgent, RuleBasedAgent
-from subpoker.neural_net import NeuralNet
+from subpoker.numpy_nn import NeuralNet
 
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
@@ -24,8 +24,8 @@ run_name = datetime.now().strftime("%d-%m-%y_%H-%M")
 RUN_DIR = os.path.join(RUNS_BASE, run_name)
 os.makedirs(RUN_DIR, exist_ok=True)
 
-used_seed = 1862962780 # For reproducibility in testing
 used_seed = random.randint(0, 2**32 -1)
+ # used_seed = 1862962780 # For reproducibility in testing
 
 
 
@@ -36,7 +36,7 @@ env = KuhnPokerEnv(used_seed)
 state = env.reset()
 
 
-n_epochs = 2000000
+n_epochs = 500000
 log_interval = n_epochs // 100
 nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-5)
 agent = RuleBasedAgent()
@@ -66,7 +66,7 @@ def decayed_lr(e: int) -> None:
     """
     Returns a decayed learning rate based on the episode number.
     """
-    learning_rate = initial_lr * (1 - e / n_epochs)
+    learning_rate = initial_lr * (0.99 ** (e // 1000))  # Decay every 1000 episodes
     nn.lr = learning_rate
 
 
@@ -162,6 +162,8 @@ baseline = 0.0
 history_records = [] # Summary for analysis
 episode_history = [] # Full history of episodes
 
+grad_norms = []  # Track gradient norm per episode
+
 
 
 # Beginning of the training
@@ -210,7 +212,13 @@ for e in range(n_epochs):
                 bluff_losses += 1
 
 
-    baseline = baseline * 0.80 + reward * 0.20 # Update the baseline to reduce variance through episodes for backpropagation.
+    baseline = baseline * 0.7 + reward * 0.30 # Update the baseline to reduce variance, bounded in [-0.5, 0.5]
+    if baseline > 0.5:
+        baseline = 0.5
+    if baseline < -0.5:
+        baseline = -0.5
+
+
 
     if trajectory:
         dW1 = np.zeros_like(nn.W1) # Sum of all gradients in one episode.
@@ -237,6 +245,11 @@ for e in range(n_epochs):
         db2 /= len(trajectory)
         nn.update(dW1, db1, dW2, db2)
 
+        # ----------------------------------------------------------
+        # Store gradient norm for diagnostics
+        grad_norm = np.sqrt(np.sum(dW1**2) + np.sum(dW2**2))
+        grad_norms.append(grad_norm)
+
     episode_rewards.append(reward)
 
     episode_history.append({"episode": e + 1, "hand": env.hands[player_number], 
@@ -257,6 +270,10 @@ for e in range(n_epochs):
         for hand in (1, 2, 3):
             for act in ("check", "call", "bet", "fold"):
                 record[f"{hand}_{act}"] = int(action_log.loc[hand, act]) # type: ignore
+        record.update({
+            "baseline": baseline,
+            "grad_norm": float(np.mean(grad_norms[-log_interval:])),
+        })
         history_records.append(record)
         action_log.loc[:, :] = 0
         win_loss_log = {"wins": 0, "losses": 0, "reward_won": 0, "reward_lost": 0}
@@ -306,7 +323,7 @@ summary = {
 
 for key, value in summary.items():
     if isinstance(value, float):
-        summary[key] = round(value, 3)
+        summary[key] = round(value, 4)
 
 with open(os.path.join(RUN_DIR, "training_summary.json"), "w", encoding="utf-8") as f:
     json.dump(summary, f, indent=2)
