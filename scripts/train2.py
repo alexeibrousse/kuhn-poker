@@ -145,6 +145,7 @@ def update_advantage( baseline: float, reward: float) -> float:
     return reward - baseline
 
 
+
 def learning_rate_decay(episode: int) -> float:
     """
     Exponentially decays the learning rate based on the episode number.
@@ -159,7 +160,6 @@ def learning_rate_decay(episode: int) -> float:
 
 
 
-
 def entropy_loss(probs: np.ndarray) -> float:
     """
     Computes the entropy loss for the given probabilities.
@@ -167,7 +167,6 @@ def entropy_loss(probs: np.ndarray) -> float:
     The addition of 1e-10 is to avoid log(0)
     """
     return -np.sum(probs * np.log(probs + 1e-10))
-
 
 
 
@@ -243,6 +242,8 @@ def main() -> None:
             state = env.reset()
 
 
+
+
+
 if __name__ == "__main__":
     main()
-    
