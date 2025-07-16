@@ -1,5 +1,13 @@
 import random
 import numpy as np
+import pandas as pd
+import json
+import os
+from datetime import datetime
+import sys
+
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
 from subpoker.agents import RuleBasedAgent
@@ -14,7 +22,7 @@ player_number = 0
 
 
 # Hyperparameters
-n_epochs = 500000
+n_epochs = 50000
 nn = NeuralNet(input_size=18, hidden_size=70, output_size=4, learning_rate=1e-5)
 agent = RuleBasedAgent()
 initial_lr = nn.lr
@@ -43,6 +51,8 @@ metadata = {
 
 
 
+
+# Training helper functions
 def encode_state(state: dict) -> np.ndarray:
     """
     Enconding the state of the game into a 18-dimension vector/
@@ -224,13 +234,52 @@ def update_nn(trajectory: list[tuple[np.ndarray, int, np.ndarray]], advantage: f
 
 
 
+
+
+# Utils and data logging
+
+def create_run_dir() -> str:
+    """
+    Creates a timestamped run directory inside 'data/numpy-nn'.
+    Returns the path to the created directory.
+    """
+    base_dir = os.path.join(os.getcwd(), "data", "numpy-nn")
+    os.makedirs(base_dir, exist_ok=True)
+    run_name = datetime.now().strftime("%d-%m-%y_%H-%M")
+    run_dir = os.path.join(base_dir, run_name)
+    os.makedirs(run_dir, exist_ok=True)
+    return run_dir
+
+
+def save_metadata() -> None:
+    """
+    Saves the metadata dictionary to a config.json file inside the run directory.
+    """
+    with open(os.path.join(RUN_DIR, "config.json"), "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=4)
+
+
+def data_log(episode_data: list[dict], episode: int, reward: int) -> None:
+    """
+    Stores the data of the current episode into a list.
+    """
+    episode_data.append({
+        "episode": episode,
+        "hand": env.hands[player_number],
+        "opp_hand": env.hands[1 - player_number],
+        "history": "-".join(env.history),
+        "reward": reward
+    })
+
+
+
 def main() -> None:
     """
     Main training loop for the neural network.
     """
     baseline = 0.0 # Initial baseline
     state = env.reset() # Initial state of the game
-
+    episode_data: list[dict] = [] # Stores data for each episode, to be analyzed by data_analysis.py
 
     for e in range(n_epochs):
         state, reward, done, trajectory = step(state)
@@ -239,11 +288,14 @@ def main() -> None:
         nn.lr = learning_rate_decay(e)
         update_nn(trajectory, advantage)
         if done:
+            data_log(episode_data, e, reward)
             state = env.reset()
-
-
-
+    
+    df = pd.DataFrame(episode_data)
+    df.to_csv(os.path.join(RUN_DIR, "full_training_data.csv"), index=False)
 
 
 if __name__ == "__main__":
+    RUN_DIR = create_run_dir()
+    save_metadata()
     main()
