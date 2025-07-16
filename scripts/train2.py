@@ -1,26 +1,30 @@
-import numpy as np
 import random
+import numpy as np
 
 from subpoker.engine import KuhnPokerEnv
-from subpoker.agents import NashAgent, RuleBasedAgent
+from subpoker.agents import RuleBasedAgent
 from subpoker.numpy_nn import NeuralNet
 
-env = KuhnPokerEnv()
+
+# Environment and reproductibility
+random_seed = random.randint(0, 2**32 - 1)
+np.random.seed(random_seed)
+env = KuhnPokerEnv(random_seed)
 player_number = 0
 
 
 # Hyperparameters
 n_epochs = 500000
-nn = NeuralNet(input_size=19, hidden_size=70, output_size=4, learning_rate=1e-5)
+nn = NeuralNet(input_size=18, hidden_size=70, output_size=4, learning_rate=1e-5)
 agent = RuleBasedAgent()
 initial_lr = nn.lr
 decay_rate = 0.99
 baseline_momentum = 0.30
 baseline_bound = 2
 entropy_coeff = 0.01
-random_seed = random.randint(0, 2**32 - 1)
-np.random.seed(random_seed) # Set random seed for reproductibility.
 
+
+# Metadata for logging
 metadata = {
     "implementation": "numpy",
     "agent": agent.name,
@@ -34,7 +38,7 @@ metadata = {
     "baseline_momentum": baseline_momentum,
     "baseline_bound": baseline_bound,
     "entropy_coeff": entropy_coeff,
-    "random_seed": random_seed
+    "random_seed": random_seed,
 }   
 
 
@@ -54,19 +58,21 @@ def encode_state(state: dict) -> np.ndarray:
 
     # One-hot enconding of the player's hand
     card_vec = [0, 0, 0]
-    card_vec[hand -1] = 1
+    card_vec[hand - 1] = 1
 
     action_index = {"check": 0, "call": 1, "bet": 2, "fold": 3, "none": 4}
+    
     history_mat = np.zeros((3,5), dtype= int)
- 
-    for i in range(3): # 3 slots as 3 actions max per round.
+
+    for i in range(3):
         action = history[i] if i < len(history) else "none"
         history_mat[i, action_index[action]] = 1     
+
     return np.concatenate([card_vec, history_mat.ravel()]) #History of ongoing round
 
 
 
-def legal_mask() -> tuple:
+def legal_mask() -> tuple[list[int], list[str]]:
     """
     Returns a list of the legal actions available as indices.
     """
@@ -90,7 +96,7 @@ def legal_mask() -> tuple:
 
 
 
-def action_probs(state: dict) -> tuple:
+def action_probs(state: dict) -> tuple[str, np.ndarray, np.ndarray, int]:
     """
     Calculates the action probabilities for the given state.
     """
@@ -100,10 +106,10 @@ def action_probs(state: dict) -> tuple:
     probs = nn.forward(X)
     filtered_probs = probs[legal_indices]
 
-    total = np.sum(filtered_probs)
+    filtered_sum = np.sum(filtered_probs)
 
-    if total > 0:
-        filtered_probs /= total
+    if filtered_sum > 0:
+        filtered_probs /= filtered_sum
     else:
         # Uniform probability over legal actions if all logits are zero
         filtered_probs = np.ones_like(filtered_probs) / len(filtered_probs)
@@ -134,7 +140,7 @@ def update_baseline(baseline: float, reward: float) -> float:
 
 def update_advantage( baseline: float, reward: float) -> float:
     """
-    Computes the advantage by subtracting the baseline from the reward.
+    Computes the advantage.
     """
     return reward - baseline
 
@@ -142,15 +148,26 @@ def update_advantage( baseline: float, reward: float) -> float:
 def learning_rate_decay(episode: int) -> float:
     """
     Exponentially decays the learning rate based on the episode number.
-    decay_rate is in [0, 1].
+    decay_rate is in ]0, 1].
     """
     if nn.lr <= 0: # Initial learning rate
         raise ValueError("Initial learning rate must be positive.")
-    if decay_rate <= 0 or decay_rate > 1: 
-        # If decay_rate is 0, no learning occurs. If decay_rate is 1, the learning rate is constant.
+    if not (0 < decay_rate <= 1): # If decay_rate is 0, no learning occurs. If decay_rate is 1, the learning rate is constant.
         raise ValueError("Decay rate must be in ]0, 1].") 
     
     return initial_lr * (decay_rate ** (episode / n_epochs))
+
+
+
+
+def entropy_loss(probs: np.ndarray) -> float:
+    """
+    Computes the entropy loss for the given probabilities.
+    This encourages exploration by penalizing certainty.
+    The addition of 1e-10 is to avoid log(0)
+    """
+    return -np.sum(probs * np.log(probs + 1e-10))
+
 
 
 
@@ -158,10 +175,9 @@ def step(state: dict) -> tuple:
     """
     Plays a round (episode) of the game, alternating between the agent and the neural network.
     """
-    state = env.reset()
     done = False
-    trajectory = [] # Stores the trajectory of the episode
-    reward = 0
+    trajectory: list[tuple[np.ndarray, int, np.ndarray]] = [] # Stores the trajectory of the episode
+    reward: int = 0
 
     while not done:
         if state["player"] != player_number: # Agent's turn to play
@@ -181,17 +197,7 @@ def step(state: dict) -> tuple:
 
 
 
-def entropy_loss(probs: np.ndarray) -> float:
-    """
-    Computes the entropy loss for the given probabilities.
-    This encourages exploration by penalizing certainty.
-    The addition of 1e-10 is to avoid log(0)
-    """
-    return -np.sum(probs * np.log(probs + 1e-10))
-
-
-
-def update_nn(state: dict, advantage: float) -> None:
+def update_nn(trajectory: list[tuple[np.ndarray, int, np.ndarray]], advantage: float) -> None:
     """
     This updates the neural network weights and biases based on the trajectory of this episode.
     """
@@ -200,15 +206,13 @@ def update_nn(state: dict, advantage: float) -> None:
     dW2 = np.zeros_like(nn.W2)
     db2 = np.zeros_like(nn.b2)
 
-    state, reward, _, trajectory = step(state)
     for X, action_index, probs in trajectory:
-        # Calculating the entropy and adding it to the advantage received by the neural network.
         entropy = entropy_loss(probs)
         step_advantage = advantage + entropy_coeff * entropy 
 
-        # Gradients for single step;
+        # Gradients for single step
         gW1, gb1, gW2, gb2 = nn.backward(X, action_index, step_advantage, probs)
-        dW1 += gW1 
+        dW1 += gW1
         db1 += gb1
         dW2 += gW2
         db2 += gb2
@@ -230,15 +234,13 @@ def main() -> None:
 
 
     for e in range(n_epochs):
-        done = False # Game is ongoing
-        trajectory = [] # Stores the trajectory of the episode
-        reward = 0 # Reward perceived by the neural network
-
         state, reward, done, trajectory = step(state)
         advantage = update_advantage(baseline, reward)
         baseline = update_baseline(baseline, reward)
         nn.lr = learning_rate_decay(e)
-        update_nn(state, advantage)
+        update_nn(trajectory, advantage)
+        if done:
+            state = env.reset()
 
 
 if __name__ == "__main__":
