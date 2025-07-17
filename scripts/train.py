@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 import subprocess
 import random
+from tqdm import trange
 
 import numpy as np
 import pandas as pd
@@ -42,6 +43,7 @@ nn = NeuralNet(input_size=19, hidden_size=70, output_size=3, learning_rate=1e-5)
 agent = RuleBasedAgent()
 player_number = 0
 entropy_coeff = 0.01 # Coefficient for entropy regularization
+gradient_clip = 10
 
 # Record metadata about the network configuration
 metadata = {
@@ -52,6 +54,7 @@ metadata = {
     "activation": "ReLU",
     "learning_rate": nn.lr,
     "entropy_coeff": entropy_coeff,
+    "gradient_clip": gradient_clip,
     "n_epochs": n_epochs,
     "log_interval": log_interval,
     "agent": agent.name,
@@ -135,7 +138,16 @@ def nnbot(state: dict) -> tuple: # Playing the round for the neural network
     return real_action, X, probs, action_index
 
 
-
+def clip_gradients(dW1: np.ndarray, db1: np.ndarray, dW2: np.ndarray, db2: np.ndarray, max_norm: float = gradient_clip) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Scale gradients so their global norm does not exceed ``max_norm``."""
+    total_norm = np.sqrt(np.sum(dW1**2) + np.sum(db1**2) + np.sum(dW2**2) + np.sum(db2**2))
+    if total_norm > max_norm:
+        scale = max_norm / (total_norm + 1e-6)
+        dW1 *= scale
+        db1 *= scale
+        dW2 *= scale
+        db2 *= scale
+    return dW1, db1, dW2, db2
 
 # Data gathering
 action_log = pd.DataFrame(
@@ -168,7 +180,7 @@ grad_norms = []  # Track gradient norm per episode
 
 # Beginning of the training
 
-for e in range(n_epochs):
+for e in trange(n_epochs):
     state = env.reset()
     done = False
     trajectory = []
@@ -225,6 +237,9 @@ for e in range(n_epochs):
         db1 = np.zeros_like(nn.b1)
         dW2 = np.zeros_like(nn.W2)
         db2 = np.zeros_like(nn.b2)
+
+        dW1, db1, dW2, db2 = clip_gradients(dW1, db1, dW2, db2) 
+
 
         advantage = reward - baseline
     

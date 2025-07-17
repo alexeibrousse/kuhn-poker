@@ -11,13 +11,14 @@ from tqdm import trange
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
-from subpoker.agents import RuleBasedAgent
+from subpoker.agents import RuleBasedAgent, NashAgent
 from subpoker.numpy_nn import NeuralNet
 
 
 # ————— Environment and reproductibility ————— #
 
 random_seed = random.randint(0, 2**32 - 1)
+random_seed = 525518843 # Fixed for reproductibility
 np.random.seed(random_seed)
 env = KuhnPokerEnv(random_seed)
 player_number = 0
@@ -27,12 +28,12 @@ player_number = 0
 # ————— Hyperparameters ————— #
 
 n_epochs = 1000000
-nn = NeuralNet(input_size=18, hidden_size=70, output_size=4, learning_rate=1e-5)
+nn = NeuralNet(input_size=18, hidden_size=70, output_size=4, learning_rate=5e-6)
 agent = RuleBasedAgent()
 initial_lr = nn.lr
-decay_rate = 0.80
+decay_rate = 0.99
 baseline_momentum = 0.10
-baseline_bound = 2
+baseline_bound = 15
 entropy_coeff = 0.01
 entropy_schedule = 0.99
 gradient_clip = 10.0
@@ -40,6 +41,7 @@ gradient_clip = 10.0
 
 
 # ————— Metadata ————— #
+
 metadata = {
     "implementation": "numpy",
     "agent": agent.name,
@@ -195,11 +197,9 @@ def entropy_loss(probs: np.ndarray) -> float:
     Computes the entropy loss for the given probabilities.
     This encourages exploration by penalizing certainty.
     The addition of 1e-10 is to avoid log(0)
-    """
-    if not -np.sum(probs * np.log(probs)):
-        return 0
-    else:
-        return -np.sum(probs * np.log(probs + 1e-10))
+    """  
+
+    return -np.sum(probs * np.log(probs + 1e-10))
 
 
 
@@ -284,6 +284,7 @@ def update_nn(trajectory: list[tuple[np.ndarray, int, np.ndarray]], advantage: f
 
 
 
+
 # ————— Utils and data logging ————— #
 
 def create_run_dir() -> str:
@@ -343,6 +344,8 @@ def data_log(episode_data: list[dict], episode: int, reward: int, baseline:float
         "gradient norm": f"{grad_norm:,.3f}",
         "all_probs": all_probs,
     })
+
+
 
 
 

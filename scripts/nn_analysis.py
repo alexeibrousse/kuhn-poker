@@ -123,6 +123,47 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
         queen_bluff_rates.append(queen_bluff / queen_count if queen_count else 0.0)
         avg_rewards.append(chunk["reward"].mean())
 
+
+    
+    # Summary for last 10% of episodes
+    recent_count = max(1, int(len(df) * 0.1))
+    recent = df.tail(recent_count)
+
+    avg_reward_last = float(recent["reward"].mean())
+    win_rate_last = float((recent["reward"] > 0).mean())
+
+    bluff_total = bluff_success = 0
+    call_total = call_success = 0
+    faced_bet = fold_total = 0
+    for _, row in recent.iterrows():
+        bluff, _, call, fold, responded, *_ = parse_episode(row)
+        if bluff:
+            bluff_total += 1
+            if row.get("reward", 0) > 0:
+                bluff_success += 1
+        if call:
+            call_total += 1
+            if row.get("reward", 0) > 0:
+                call_success += 1
+        if responded:
+            faced_bet += 1
+            if fold:
+                fold_total += 1
+
+    summary = {
+        "average_reward": round(avg_reward_last, 4),
+        "win_rate": round(win_rate_last, 4),
+        "bluff_success_rate": round(bluff_success / bluff_total, 4) if bluff_total else 0.0,
+        "call_success_rate": round(call_success / call_total, 4) if call_total else 0.0,
+        "fold_frequency_after_bet": round(fold_total / faced_bet, 4) if faced_bet else 0.0,
+    }
+
+    with open(os.path.join(run_dir, "analysis_summary.json"), "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+
+
+
+
     # 1. Average reward curve
     plt.figure()
     plt.plot(episodes, avg_rewards)
