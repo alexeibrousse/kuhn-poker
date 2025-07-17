@@ -172,7 +172,7 @@ def learning_rate_decay(episode: int) -> float:
     if not (0 < decay_rate <= 1): # If decay_rate is 0, no learning occurs. If decay_rate is 1, the learning rate is constant.
         raise ValueError("Decay rate must be in ]0, 1].") 
     
-    return initial_lr * (decay_rate ** (episode / n_epochs))
+    return initial_lr * decay_rate * (1 - episode / n_epochs)
 
 
 
@@ -186,13 +186,14 @@ def entropy_loss(probs: np.ndarray) -> float:
 
 
 
-def step(state: dict) -> tuple:
+def step(state: dict, collect_probs: bool=False) -> tuple:
     """
     Plays a round (episode) of the game, alternating between the agent and the neural network.
     """
     done = False
     trajectory: list[tuple[np.ndarray, int, np.ndarray]] = [] # Stores the trajectory of the episode
     reward: int = 0
+    all_probs = []
 
     while not done:
         if state["player"] != player_number: # Agent's turn to play
@@ -202,13 +203,18 @@ def step(state: dict) -> tuple:
         else: # Neural network's turn to play
             action, X, probs, action_index = action_probs(state)
             trajectory.append((X, action_index, probs)) # Store the trajectory
+            if collect_probs:
+                all_probs.append(np.round(probs,3).tolist())
         
         state, step_rewards, done, _ = env.step(action)
         reward = step_rewards[player_number]
 
     # Round has finished.
 
-    return state, reward, done, trajectory
+    if collect_probs:
+        return state, reward, done, trajectory, all_probs
+    else:
+        return state, reward, done, trajectory
 
 
 
@@ -287,7 +293,7 @@ def gradient_norm(dW1: np.ndarray, dW2: np.ndarray) -> float:
 
 
 
-def data_log(episode_data: list[dict], episode: int, reward: int, state: dict, grad_norm: float) -> None:
+def data_log(episode_data: list[dict], episode: int, reward: int, grad_norm: float, all_probs: list[list]) -> None:
     """
     Stores the data of the current episode into a list.
     """
@@ -300,8 +306,9 @@ def data_log(episode_data: list[dict], episode: int, reward: int, state: dict, g
         "history_length": len(env.history),
         "reward": reward,
         "result": "win" if reward > 0 else "loss",
-        "learning_rate": nn.lr,
-        "gradient norm": f"{grad_norm:,.3f}"
+        "learning_rate": f"{nn.lr:,.3e}",
+        "gradient norm": f"{grad_norm:,.3f}",
+        "all_probs": all_probs,
     })
 
 
@@ -317,13 +324,15 @@ def main() -> None:
     episode_data: list[dict] = [] # Stores data for each episode, to be analyzed by data_analysis.py
 
     for e in range(1, n_epochs + 1):
-        state, reward, done, trajectory = step(state)
+        all_probs = []  # Collect all probs for this episode
+
+        state, reward, done, trajectory, all_probs = step(state, collect_probs=True)
         advantage = update_advantage(baseline, reward)
         baseline = update_baseline(baseline, reward)
         nn.lr = learning_rate_decay(e)
         grad_norm = update_nn(trajectory, advantage)
         if done:
-            data_log(episode_data, e, reward, state, grad_norm)
+            data_log(episode_data, e, reward, grad_norm, all_probs)
             state = env.reset()
     
     df = pd.DataFrame(episode_data)
