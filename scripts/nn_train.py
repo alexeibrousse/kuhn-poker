@@ -5,6 +5,7 @@ import json
 import os
 from datetime import datetime
 import sys
+import subprocess
 
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -345,3 +346,5 @@ if __name__ == "__main__":
     RUN_DIR = create_run_dir()
     save_metadata()
     main()
+    analysis_script = os.path.join(os.path.dirname(__file__), "nn_analysis.py")
+    subprocess.run([sys.executable, analysis_script, RUN_DIR], check=True)
