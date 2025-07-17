@@ -35,6 +35,7 @@ baseline_momentum = 0.10
 baseline_bound = 2
 entropy_coeff = 0.01
 entropy_schedule = 0.99
+gradient_clip = 10.0
 
 
 
@@ -54,6 +55,7 @@ metadata = {
     "entropy_coeff": entropy_coeff,
     "entropy_schedule": entropy_schedule,
     "random_seed": random_seed,
+    "gradient_clip": gradient_clip,
 }   
 
 
@@ -201,6 +203,19 @@ def entropy_loss(probs: np.ndarray) -> float:
 
 
 
+def clip_gradients(dW1: np.ndarray, db1: np.ndarray, dW2: np.ndarray, db2: np.ndarray, max_norm: float = gradient_clip) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Scale gradients so their global norm does not exceed ``max_norm``."""
+    total_norm = np.sqrt(np.sum(dW1**2) + np.sum(db1**2) + np.sum(dW2**2) + np.sum(db2**2))
+    if total_norm > max_norm:
+        scale = max_norm / (total_norm + 1e-6)
+        dW1 *= scale
+        db1 *= scale
+        dW2 *= scale
+        db2 *= scale
+    return dW1, db1, dW2, db2
+
+
+
 def step(state: dict, collect_probs: bool=False) -> tuple:
     """
     Plays a round (episode) of the game, alternating between the agent and the neural network.
@@ -258,6 +273,8 @@ def update_nn(trajectory: list[tuple[np.ndarray, int, np.ndarray]], advantage: f
     db1 /= len(trajectory)
     dW2 /= len(trajectory)
     db2 /= len(trajectory)
+
+    dW1, db1, dW2, db2 = clip_gradients(dW1, db1, dW2, db2) 
 
     grad_norm = gradient_norm(dW1, dW2)
     nn.update(dW1, db1, dW2, db2)
@@ -335,6 +352,7 @@ def main() -> None:
     """
     Main training loop for the neural network.
     """
+    save_metadata()
     baseline = 0.0 # Initial baseline
     state = env.reset() # Initial state of the game
     episode_data: list[dict] = [] # Stores data for each episode, to be analyzed by data_analysis.py
@@ -360,7 +378,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     RUN_DIR = create_run_dir()
-    save_metadata()
     main()
     print("1/2 - Training completed.")
     analysis_script = os.path.join(os.path.dirname(__file__), "nn_analysis.py")
