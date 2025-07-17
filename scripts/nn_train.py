@@ -212,9 +212,10 @@ def step(state: dict) -> tuple:
 
 
 
-def update_nn(trajectory: list[tuple[np.ndarray, int, np.ndarray]], advantage: float) -> None:
+def update_nn(trajectory: list[tuple[np.ndarray, int, np.ndarray]], advantage: float) -> float:
     """
     This updates the neural network weights and biases based on the trajectory of this episode.
+    Returns the norm of the weight gradients.
     """
     dW1 = np.zeros_like(nn.W1)
     db1 = np.zeros_like(nn.b1)
@@ -236,7 +237,11 @@ def update_nn(trajectory: list[tuple[np.ndarray, int, np.ndarray]], advantage: f
     db1 /= len(trajectory)
     dW2 /= len(trajectory)
     db2 /= len(trajectory)
+
+    grad_norm = gradient_norm(dW1, dW2)
     nn.update(dW1, db1, dW2, db2)
+
+    return grad_norm
 
 
 
@@ -277,7 +282,12 @@ def first_to_start(state: dict) -> int:
 
 
 
-def data_log(episode_data: list[dict], episode: int, reward: int, state: dict) -> None:
+def gradient_norm(dW1: np.ndarray, dW2: np.ndarray) -> float:
+    return np.sqrt(np.sum(dW1**2) + np.sum(dW2**2))
+
+
+
+def data_log(episode_data: list[dict], episode: int, reward: int, state: dict, grad_norm: float) -> None:
     """
     Stores the data of the current episode into a list.
     """
@@ -290,6 +300,8 @@ def data_log(episode_data: list[dict], episode: int, reward: int, state: dict) -
         "history_length": len(env.history),
         "reward": reward,
         "result": "win" if reward > 0 else "loss",
+        "learning_rate": nn.lr,
+        "gradient norm": f"{grad_norm:,.3f}"
     })
 
 
@@ -309,9 +321,9 @@ def main() -> None:
         advantage = update_advantage(baseline, reward)
         baseline = update_baseline(baseline, reward)
         nn.lr = learning_rate_decay(e)
-        update_nn(trajectory, advantage)
+        grad_norm = update_nn(trajectory, advantage)
         if done:
-            data_log(episode_data, e, reward, state)
+            data_log(episode_data, e, reward, state, grad_norm)
             state = env.reset()
     
     df = pd.DataFrame(episode_data)
