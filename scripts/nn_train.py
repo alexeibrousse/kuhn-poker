@@ -293,7 +293,7 @@ def gradient_norm(dW1: np.ndarray, dW2: np.ndarray) -> float:
 
 
 
-def data_log(episode_data: list[dict], episode: int, reward: int, grad_norm: float, all_probs: list[list]) -> None:
+def data_log(episode_data: list[dict], episode: int, reward: int, baseline:float, grad_norm: float, all_probs: list[list]) -> None:
     """
     Stores the data of the current episode into a list.
     """
@@ -305,6 +305,7 @@ def data_log(episode_data: list[dict], episode: int, reward: int, grad_norm: flo
         "history": "-".join(env.history),
         "history_length": len(env.history),
         "reward": reward,
+        "baseline": f"{baseline:,.3f}",
         "result": "win" if reward > 0 else "loss",
         "learning_rate": f"{nn.lr:,.3e}",
         "gradient norm": f"{grad_norm:,.3f}",
@@ -328,11 +329,12 @@ def main() -> None:
 
         state, reward, done, trajectory, all_probs = step(state, collect_probs=True)
         advantage = update_advantage(baseline, reward)
+        fixed_baseline = baseline
         baseline = update_baseline(baseline, reward)
         nn.lr = learning_rate_decay(e)
         grad_norm = update_nn(trajectory, advantage)
         if done:
-            data_log(episode_data, e, reward, grad_norm, all_probs)
+            data_log(episode_data, e, reward, fixed_baseline, grad_norm, all_probs)
             state = env.reset()
     
     df = pd.DataFrame(episode_data)
