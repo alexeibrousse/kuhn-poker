@@ -19,13 +19,14 @@ def load_run_dir(path: str | None) -> str:
     return os.path.join(BASE_DIR, runs[-1])
 
 
-def parse_episode(row: pd.Series) -> tuple[bool, bool, bool, bool, int, int, int]:
+def parse_episode(row: pd.Series) -> tuple[bool, bool, bool, bool, bool, int, int, int]:
     """Extract episode metrics from a row.
 
-    Returns a tuple '(bluff, value_bet, call, responded_to_bet, jack_hand, queen_hand, king_hand)'.
+    Returns a tuple '(bluff, value_bet, call, fold, responded_to_bet, jack_hand, queen_hand, king_hand)'.
     'bluff' is True if we bet with J or Q and opponent responded.
     'value_bet' is True if we bet with K and opponent responded.
     'call' is True if our last action was a call.
+    'fold' is True if our last action was a fold.
     'responded_to_bet' indicates we faced a bet and either called or folded.
     Also returns indicators for having each hand.
     """
@@ -37,6 +38,7 @@ def parse_episode(row: pd.Series) -> tuple[bool, bool, bool, bool, int, int, int
     bluff = False
     value_bet = False
     call = False
+    fold = False
     responded = False
 
     if actions:
@@ -47,6 +49,8 @@ def parse_episode(row: pd.Series) -> tuple[bool, bool, bool, bool, int, int, int
             responded = True
             if last_action == "call":
                 call = True
+            elif last_action == "fold":
+                fold = True
 
         if len(actions) >= 2:
             bet_idx = len(actions) - 2
@@ -57,7 +61,7 @@ def parse_episode(row: pd.Series) -> tuple[bool, bool, bool, bool, int, int, int
                 elif hand == 3:
                     value_bet = True
 
-    return bluff, value_bet, call, responded, hand == 1, hand == 2, hand == 3
+    return bluff, value_bet, call, fold, responded, hand == 1, hand == 2, hand == 3
 
 
 def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
@@ -94,7 +98,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
         hands12 = 0
 
         for _, row in chunk.iterrows():
-            b, vb, c, r, j, q, k = parse_episode(row)
+            b, vb, c, f, r, j, q, k = parse_episode(row)
             bluff += int(b)
             value_bet += int(vb)
             call += int(c)
@@ -130,6 +134,8 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.savefig(os.path.join(run_dir, "avg_reward.pdf"))
     plt.close()
 
+
+
     # 2. Strategy metrics
     plt.figure()
     plt.plot(episodes, bluff_rates, label="Bluff rate")
@@ -143,6 +149,9 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.savefig(os.path.join(run_dir, "strategy_metrics.pdf"))
     plt.close()
 
+
+
+    # 3. Jack bluff rate
     plt.figure()
     plt.plot(episodes, jack_bluff_rates, label="Jack bluff rate")
     plt.xlabel("Episode")
@@ -153,7 +162,9 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.savefig(os.path.join(run_dir, "jack_bluff_rate.pdf"))
     plt.close()
 
-    # 3. Bluff rate per card
+
+
+    # 4. Queen bluff rate
     plt.figure()
     plt.plot(episodes, queen_bluff_rates, label="Queen bluff rate")
     plt.xlabel("Episode")
@@ -164,7 +175,9 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.savefig(os.path.join(run_dir, "queen_bluff_rate.pdf"))
     plt.close()
 
-    # 4. Baseline vs reward
+
+
+    # 5. Baseline vs reward
     plt.figure()
     plt.plot(episodes, baseline_means, label="Baseline")
     plt.plot(episodes, reward_means, label="Reward")
@@ -177,7 +190,9 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.savefig(os.path.join(run_dir, "baseline_vs_reward.pdf"))
     plt.close()
 
-    # 5. Gradient norm
+
+
+    # 6. Gradient norm
     plt.figure()
     plt.plot(episodes, grad_norm_means, label="Gradient norm")
     plt.xlabel("Episode")
@@ -187,6 +202,9 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.tight_layout()
     plt.savefig(os.path.join(run_dir, "grad_norm.pdf"))
     plt.close()
+
+
+
 
 
 def main() -> None:
@@ -205,6 +223,7 @@ def main() -> None:
         n_epochs = len(df)
 
     analyze(df, n_epochs, run_dir)
+
 
 
 if __name__ == "__main__":

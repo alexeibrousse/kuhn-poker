@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 import sys
 import subprocess
-
+from tqdm import trange
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -26,14 +26,15 @@ player_number = 0
 
 # ————— Hyperparameters ————— #
 
-n_epochs = 50000
+n_epochs = 1000000
 nn = NeuralNet(input_size=18, hidden_size=70, output_size=4, learning_rate=1e-5)
 agent = RuleBasedAgent()
 initial_lr = nn.lr
-decay_rate = 0.99
-baseline_momentum = 0.30
-baseline_bound = 1
+decay_rate = 0.80
+baseline_momentum = 0.10
+baseline_bound = 2
 entropy_coeff = 0.01
+entropy_schedule = 0.99
 
 
 
@@ -51,6 +52,7 @@ metadata = {
     "baseline_momentum": baseline_momentum,
     "baseline_bound": baseline_bound,
     "entropy_coeff": entropy_coeff,
+    "entropy_schedule": entropy_schedule,
     "random_seed": random_seed,
 }   
 
@@ -177,13 +179,25 @@ def learning_rate_decay(episode: int) -> float:
 
 
 
+def entropy_coeff_schedule(episode: int) -> float:
+    """
+    Linearly decays entropy coefficient from the entropy coefficient hyperparameter to 0.0 over training.
+    """
+    
+    return entropy_coeff * entropy_schedule *(1 - (episode / n_epochs))
+
+
+
 def entropy_loss(probs: np.ndarray) -> float:
     """
     Computes the entropy loss for the given probabilities.
     This encourages exploration by penalizing certainty.
     The addition of 1e-10 is to avoid log(0)
     """
-    return -np.sum(probs * np.log(probs + 1e-10))
+    if not -np.sum(probs * np.log(probs)):
+        return 0
+    else:
+        return -np.sum(probs * np.log(probs + 1e-10))
 
 
 
@@ -325,7 +339,7 @@ def main() -> None:
     state = env.reset() # Initial state of the game
     episode_data: list[dict] = [] # Stores data for each episode, to be analyzed by data_analysis.py
 
-    for e in range(1, n_epochs + 1):
+    for e in trange(1, n_epochs + 1, desc="Training"):
         all_probs = []  # Collect all probs for this episode
 
         state, reward, done, trajectory, all_probs = step(state, collect_probs=True)
@@ -333,6 +347,8 @@ def main() -> None:
         fixed_baseline = baseline
         baseline = update_baseline(baseline, reward)
         nn.lr = learning_rate_decay(e)
+        global entropy_coeff
+        entropy_coeff = entropy_coeff_schedule(e)
         grad_norm = update_nn(trajectory, advantage)
         if done:
             data_log(episode_data, e, reward, fixed_baseline, grad_norm, all_probs)
@@ -346,5 +362,7 @@ if __name__ == "__main__":
     RUN_DIR = create_run_dir()
     save_metadata()
     main()
+    print("1/2 - Training completed.")
     analysis_script = os.path.join(os.path.dirname(__file__), "nn_analysis.py")
     subprocess.run([sys.executable, analysis_script, RUN_DIR], check=True)
+    print("2/2 - Analysis completed.")
