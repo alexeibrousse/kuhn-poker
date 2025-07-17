@@ -8,7 +8,7 @@ BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "num
 
 
 def load_run_dir(path: str | None) -> str:
-    """Return path to run directory. If ``path`` is None, use latest."""
+    """Return path to run directory. If 'path' is None, use latest."""
     if path:
         return path
     if not os.path.exists(BASE_DIR):
@@ -22,11 +22,11 @@ def load_run_dir(path: str | None) -> str:
 def parse_episode(row: pd.Series) -> tuple[bool, bool, bool, bool, int, int, int]:
     """Extract episode metrics from a row.
 
-    Returns a tuple ``(bluff, value_bet, call, responded_to_bet, jack_hand, queen_hand, king_hand)``.
-    ``bluff`` is True if we bet with J or Q and opponent responded.
-    ``value_bet`` is True if we bet with K and opponent responded.
-    ``call`` is True if our last action was a call.
-    ``responded_to_bet`` indicates we faced a bet and either called or folded.
+    Returns a tuple '(bluff, value_bet, call, responded_to_bet, jack_hand, queen_hand, king_hand)'.
+    'bluff' is True if we bet with J or Q and opponent responded.
+    'value_bet' is True if we bet with K and opponent responded.
+    'call' is True if our last action was a call.
+    'responded_to_bet' indicates we faced a bet and either called or folded.
     Also returns indicators for having each hand.
     """
     history = row.get("history", "")
@@ -138,23 +138,30 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.xlabel("Episode")
     plt.ylabel("Rate")
     plt.title("Strategy Metrics")
-    plt.legend()
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(os.path.join(run_dir, "strategy_metrics.pdf"))
     plt.close()
 
-    # 3. Bluff rate per card
     plt.figure()
     plt.plot(episodes, jack_bluff_rates, label="Jack bluff rate")
+    plt.xlabel("Episode")
+    plt.ylabel("Rate")
+    plt.title("Jack Bluff Rate")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(run_dir, "jack_bluff_rate.pdf"))
+    plt.close()
+
+    # 3. Bluff rate per card
+    plt.figure()
     plt.plot(episodes, queen_bluff_rates, label="Queen bluff rate")
     plt.xlabel("Episode")
     plt.ylabel("Rate")
-    plt.title("Bluff Rate by Card")
-    plt.legend()
+    plt.title("Queen Bluff Rate")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(run_dir, "bluff_rate_cards.pdf"))
+    plt.savefig(os.path.join(run_dir, "queen_bluff_rate.pdf"))
     plt.close()
 
     # 4. Baseline vs reward
