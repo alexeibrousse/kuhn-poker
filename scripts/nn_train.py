@@ -14,14 +14,17 @@ from subpoker.agents import RuleBasedAgent
 from subpoker.numpy_nn import NeuralNet
 
 
-# Environment and reproductibility
+# ————— Environment and reproductibility ————— #
+
 random_seed = random.randint(0, 2**32 - 1)
 np.random.seed(random_seed)
 env = KuhnPokerEnv(random_seed)
 player_number = 0
 
 
-# Hyperparameters
+
+# ————— Hyperparameters ————— #
+
 n_epochs = 50000
 nn = NeuralNet(input_size=18, hidden_size=70, output_size=4, learning_rate=1e-5)
 agent = RuleBasedAgent()
@@ -32,7 +35,8 @@ baseline_bound = 2
 entropy_coeff = 0.01
 
 
-# Metadata for logging
+
+# ————— Metadata ————— #
 metadata = {
     "implementation": "numpy",
     "agent": agent.name,
@@ -52,7 +56,9 @@ metadata = {
 
 
 
-# Training helper functions
+
+# ————— Training helper functions ————— #
+
 def encode_state(state: dict) -> np.ndarray:
     """
     Enconding the state of the game into a 18-dimension vector/
@@ -235,8 +241,7 @@ def update_nn(trajectory: list[tuple[np.ndarray, int, np.ndarray]], advantage: f
 
 
 
-
-# Utils and data logging
+# ————— Utils and data logging ————— #
 
 def create_run_dir() -> str:
     """
@@ -251,6 +256,7 @@ def create_run_dir() -> str:
     return run_dir
 
 
+
 def save_metadata() -> None:
     """
     Saves the metadata dictionary to a config.json file inside the run directory.
@@ -259,7 +265,19 @@ def save_metadata() -> None:
         json.dump(metadata, f, indent=4)
 
 
-def data_log(episode_data: list[dict], episode: int, reward: int) -> None:
+
+def first_to_start(state: dict) -> int:
+    """
+    Determines which player is the first to act based on the game state.
+    """
+    if state["player"] == player_number:
+        return player_number
+    else:
+        return 1 - player_number
+
+
+
+def data_log(episode_data: list[dict], episode: int, reward: int, state: dict) -> None:
     """
     Stores the data of the current episode into a list.
     """
@@ -267,11 +285,16 @@ def data_log(episode_data: list[dict], episode: int, reward: int) -> None:
         "episode": episode,
         "hand": env.hands[player_number],
         "opp_hand": env.hands[1 - player_number],
+        "first_to_act": env.first_to_start(),
         "history": "-".join(env.history),
-        "reward": reward
+        "history_length": len(env.history),
+        "reward": reward,
+        "result": "win" if reward > 0 else "loss",
     })
 
 
+
+# ————— Main training loop ————— #
 
 def main() -> None:
     """
@@ -281,14 +304,14 @@ def main() -> None:
     state = env.reset() # Initial state of the game
     episode_data: list[dict] = [] # Stores data for each episode, to be analyzed by data_analysis.py
 
-    for e in range(n_epochs):
+    for e in range(1, n_epochs + 1):
         state, reward, done, trajectory = step(state)
         advantage = update_advantage(baseline, reward)
         baseline = update_baseline(baseline, reward)
         nn.lr = learning_rate_decay(e)
         update_nn(trajectory, advantage)
         if done:
-            data_log(episode_data, e, reward)
+            data_log(episode_data, e, reward, state)
             state = env.reset()
     
     df = pd.DataFrame(episode_data)
