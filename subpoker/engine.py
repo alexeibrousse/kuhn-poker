@@ -5,12 +5,14 @@ from typing import Optional
 class KuhnPokerEnv:
     def __init__(self, seed: Optional[int] = None):
         """
-        The optional seed parameter is used for reproductibility, making the game deterministic.
+        The optional seed parameter is used for reproductibility.
         If not provided, a random seed is used.
         """
         self._rng = random.Random(seed)
         self.reset()
     
+
+
     def reset(self):
         self.deck = [1, 2, 3] # Cards J, Q, K
         self._rng.shuffle(self.deck)    
@@ -19,12 +21,22 @@ class KuhnPokerEnv:
         self.pot = 2
         self.bets = [1, 1]
         self.history = []
-        self.current_player = self._rng.choice([0,1])
+        self.first_player = self._rng.choice([0,1])
+        self.current_player = self.first_player
         self.terminal = False
         self.winner = None
 
         return self.get_state()
     
+
+
+    def first_to_start(self) -> int:
+        """
+        Returns the index of the first player to act.
+        """
+        return self.first_player
+
+
 
     def legal_actions(self) -> list:
         """ 
@@ -41,6 +53,8 @@ class KuhnPokerEnv:
             }
         return mapping.get(tuple(self.history),[])
     
+
+
     def step(self, action: str) -> tuple:
         """
         Applies action to current player.
@@ -84,6 +98,8 @@ class KuhnPokerEnv:
         
         return self.get_state(), rewards, done, {}
     
+
+
     def get_reward(self) -> list:
         """Return net payoff for both players once the game ends."""
         if not self.terminal:
@@ -97,6 +113,7 @@ class KuhnPokerEnv:
                 rewards[i] = -self.bets[i]
         return rewards    
 
+
     
     def is_terminal(self) -> bool:
         """
@@ -104,6 +121,8 @@ class KuhnPokerEnv:
         """
         return self.terminal
     
+
+
     def get_state(self) -> dict:
         """
         Return a dict representing the current observable state for the active player:
@@ -122,6 +141,7 @@ class KuhnPokerEnv:
             'terminal': self.terminal
         }
     
+
 
     def get_state_full(self) -> dict:
         """
