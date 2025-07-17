@@ -31,7 +31,7 @@ agent = RuleBasedAgent()
 initial_lr = nn.lr
 decay_rate = 0.99
 baseline_momentum = 0.30
-baseline_bound = 2
+baseline_bound = 1
 entropy_coeff = 0.01
 
 
