@@ -121,7 +121,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
 
     # 1. Average reward curve
     plt.figure()
-    plt.plot(episodes, avg_rewards, marker="o")
+    plt.plot(episodes, avg_rewards)
     plt.xlabel("Episode")
     plt.ylabel("Average Reward")
     plt.title("Average Reward Over Time")
