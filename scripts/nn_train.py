@@ -11,24 +11,30 @@ from tqdm import trange
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
-from subpoker.agents import RuleBasedAgent, NashAgent
+from subpoker.agents import RuleBasedAgent
 from subpoker.numpy_nn import NeuralNet
 
 
 # ————— Environment and reproductibility ————— #
 
 random_seed = random.randint(0, 2**32 - 1)
-random_seed = 525518843 # Fixed for reproductibility
+# random_seed = 1906220402
 np.random.seed(random_seed)
 env = KuhnPokerEnv(random_seed)
 player_number = 0
 
-
+"""
+Seeds for reproductibility:
+1. 525518843
+2. 2342489760
+3. 2097210685
+4. 1906220402
+"""
 
 # ————— Hyperparameters ————— #
 
 n_epochs = 1000000
-nn = NeuralNet(input_size=18, hidden_size=70, output_size=4, learning_rate=5e-6)
+nn = NeuralNet(input_size=18, hidden_size=20, output_size=4, learning_rate=5e-5)
 agent = RuleBasedAgent()
 initial_lr = nn.lr
 decay_rate = 0.99
@@ -74,7 +80,7 @@ def encode_state(state: dict) -> np.ndarray:
         [0, 1, 0] is Queen
         [1, 0, 0] is Jack
     Last 15 dimensions are the history of the ongoing round, represented as a 3x5 matrix (3 steps max, 5 actions including "none")
-    "none" is a placeholder which can be filled  with the action taken at that step.
+    "none" is a placeholder which can be filled with the action taken at that step.
     """
     hand = state["hand"]
     history = state["history"]
@@ -146,7 +152,7 @@ def action_probs(state: dict) -> tuple[str, np.ndarray, np.ndarray, int]:
 
 def update_baseline(baseline: float, reward: float) -> float:
     """
-    Update the baseline to reduce variance, bounded in [-bound, bound]. 
+    Updates the baseline to reduce variance, bounded in [-bound, bound]. 
     """
     momentum, bound = baseline_momentum, baseline_bound
 
@@ -161,9 +167,9 @@ def update_baseline(baseline: float, reward: float) -> float:
 
 
 
-def update_advantage( baseline: float, reward: float) -> float:
+def update_advantage(baseline: float, reward: float) -> float:
     """
-    Computes the advantage.
+    Computes the advantage. Can't explain better.
     """
     return reward - baseline
 
@@ -171,12 +177,13 @@ def update_advantage( baseline: float, reward: float) -> float:
 
 def learning_rate_decay(episode: int) -> float:
     """
-    Exponentially decays the learning rate based on the episode number.
+    Linearly decays the learning rate based on the episode number.
     decay_rate is in ]0, 1].
+    If decay_rate is 0, no learning occurs. If decay_rate is 1, the learning rate is constant.
     """
     if nn.lr <= 0: # Initial learning rate
         raise ValueError("Initial learning rate must be positive.")
-    if not (0 < decay_rate <= 1): # If decay_rate is 0, no learning occurs. If decay_rate is 1, the learning rate is constant.
+    if not (0 < decay_rate <= 1):
         raise ValueError("Decay rate must be in ]0, 1].") 
     
     return initial_lr * decay_rate * (1 - episode / n_epochs)
@@ -185,17 +192,16 @@ def learning_rate_decay(episode: int) -> float:
 
 def entropy_coeff_schedule(episode: int) -> float:
     """
-    Linearly decays entropy coefficient from the entropy coefficient hyperparameter to 0.0 over training.
+    Linearly decays the 'entropy_coefficient' to 0.0 over training.
     """
     
-    return entropy_coeff * entropy_schedule *(1 - (episode / n_epochs))
+    return entropy_coeff * entropy_schedule * (1 - (episode / n_epochs))
 
 
 
 def entropy_loss(probs: np.ndarray) -> float:
     """
     Computes the entropy loss for the given probabilities.
-    This encourages exploration by penalizing certainty.
     The addition of 1e-10 is to avoid log(0)
     """  
 
@@ -204,7 +210,9 @@ def entropy_loss(probs: np.ndarray) -> float:
 
 
 def clip_gradients(dW1: np.ndarray, db1: np.ndarray, dW2: np.ndarray, db2: np.ndarray, max_norm: float = gradient_clip) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Scale gradients so their global norm does not exceed ``max_norm``."""
+    """
+    Scales gradients so their global norm does not exceed 'max_norm'.
+    """
     total_norm = np.sqrt(np.sum(dW1**2) + np.sum(db1**2) + np.sum(dW2**2) + np.sum(db2**2))
     if total_norm > max_norm:
         scale = max_norm / (total_norm + 1e-6)
@@ -322,6 +330,9 @@ def first_to_start(state: dict) -> int:
 
 
 def gradient_norm(dW1: np.ndarray, dW2: np.ndarray) -> float:
+    """
+    Computes the norm of the weight gradients.
+    """
     return np.sqrt(np.sum(dW1**2) + np.sum(dW2**2))
 
 

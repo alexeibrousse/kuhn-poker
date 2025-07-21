@@ -17,3 +17,6 @@ __pycache__/
 
 # Experiment outputs
 data/
+scripts/analyze_training.py
+scripts/train.py
+images/
