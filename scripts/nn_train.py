@@ -15,7 +15,7 @@ from subpoker.agents import RuleBasedAgent
 from subpoker.numpy_nn import NeuralNet
 
 
-# ————— Environment and reproductibility ————— #
+# ————— Environment and reproducibility ————— #
 
 random_seed = random.randint(0, 2**32 - 1)
 # random_seed = 1906220402
@@ -24,7 +24,7 @@ env = KuhnPokerEnv(random_seed)
 player_number = 0
 
 """
-Seeds for reproductibility:
+Seeds for reproducibility:
 1. 525518843
 2. 2342489760
 3. 2097210685
@@ -74,24 +74,24 @@ metadata = {
 
 def encode_state(state: dict) -> np.ndarray:
     """
-    Enconding the state of the game into a 18-dimension vector/
-    3 first dimension are the encoded card:
+    Encoding the game state into a 18-dimensional vector.
+    The first three dimensions represent the player's card as one-hot:
         [0, 0, 1] is King
         [0, 1, 0] is Queen
         [1, 0, 0] is Jack
-    Last 15 dimensions are the history of the ongoing round, represented as a 3x5 matrix (3 steps max, 5 actions including "none")
-    "none" is a placeholder which can be filled with the action taken at that step.
+    The remaining 15 dimensions encode the round history as a 3x5 matrix
+    (three steps max, five actions including "none"). "none" is a placeholder for actions that have not occurred.
     """
     hand = state["hand"]
     history = state["history"]
 
-    # One-hot enconding of the player's hand
+    # One-hot encoding of the player's hand
     card_vec = [0, 0, 0]
     card_vec[hand - 1] = 1
 
     action_index = {"check": 0, "call": 1, "bet": 2, "fold": 3, "none": 4}
     
-    history_mat = np.zeros((3,5), dtype= int)
+    history_mat = np.zeros((3, 5), dtype=int)
 
     for i in range(3):
         action = history[i] if i < len(history) else "none"
@@ -101,40 +101,16 @@ def encode_state(state: dict) -> np.ndarray:
 
 
 
-def legal_mask() -> tuple[list[int], list[str]]:
-    """
-    Returns a list of the legal actions available as indices.
-    """
-    legal = env.legal_actions()
-
-    action_map = ["check", "call", "bet", "fold"]
-    legal_indices = []
-
-    if "check" in legal:
-        legal_indices.append(0)
-    if "call" in legal:
-        legal_indices.append(1)
-    if "bet" in legal:
-        legal_indices.append(2)
-    if "fold" in legal:
-        legal_indices.append(3)
-    
-    legal_actions = [action_map[i] for i in legal_indices] # Strings of the legal indices
-
-    return legal_indices, legal_actions
-
-
-
 def action_probs(state: dict) -> tuple[str, np.ndarray, np.ndarray, int]:
-    """
-    Calculates the action probabilities for the given state.
-    """
+    """ Calculates the action probabilities for the given state. """
     X = encode_state(state)
-    legal_indices, legal_actions = legal_mask()
-
     probs = nn.forward(X)
-    filtered_probs = probs[legal_indices]
+    
+    legal_actions = env.legal_actions()
+    action_to_index = {"check": 0, "call": 1, "bet": 2, "fold": 3}
+    legal_indices = [action_to_index[i] for i in legal_actions]
 
+    filtered_probs = probs[legal_indices]
     filtered_sum = np.sum(filtered_probs)
 
     if filtered_sum > 0:
@@ -144,7 +120,7 @@ def action_probs(state: dict) -> tuple[str, np.ndarray, np.ndarray, int]:
         filtered_probs = np.ones_like(filtered_probs) / len(filtered_probs)
         
     action = np.random.choice(legal_actions, p=filtered_probs)
-    action_index = legal_indices[legal_actions.index(action)]
+    action_index = action_to_index[action]
 
     return action, X, probs, action_index
 
@@ -224,7 +200,7 @@ def clip_gradients(dW1: np.ndarray, db1: np.ndarray, dW2: np.ndarray, db2: np.nd
 
 
 
-def step(state: dict, collect_probs: bool=False) -> tuple:
+def step(state: dict, collect_probs: bool = False) -> tuple:
     """
     Plays a round (episode) of the game, alternating between the agent and the neural network.
     """
@@ -318,17 +294,6 @@ def save_metadata() -> None:
 
 
 
-def first_to_start(state: dict) -> int:
-    """
-    Determines which player is the first to act based on the game state.
-    """
-    if state["player"] == player_number:
-        return player_number
-    else:
-        return 1 - player_number
-
-
-
 def gradient_norm(dW1: np.ndarray, dW2: np.ndarray) -> float:
     """
     Computes the norm of the weight gradients.
@@ -337,7 +302,7 @@ def gradient_norm(dW1: np.ndarray, dW2: np.ndarray) -> float:
 
 
 
-def data_log(episode_data: list[dict], episode: int, reward: int, baseline:float, grad_norm: float, all_probs: list[list]) -> None:
+def data_log(episode_data: list[dict], episode: int, reward: int, baseline: float, grad_norm: float, all_probs: list[list]) -> None:
     """
     Stores the data of the current episode into a list.
     """

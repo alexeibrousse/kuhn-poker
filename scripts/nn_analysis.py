@@ -171,7 +171,6 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.ylabel("Average Reward")
     plt.title("Average Reward Over Time")
     plt.grid(True)
-    plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(run_dir, "avg_reward.pdf"))
     plt.close()
