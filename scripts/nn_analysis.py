@@ -4,64 +4,8 @@ import json
 import pandas as pd
 import matplotlib.pyplot as plt
 
-BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "numpy-nn")
+from utils import load_run_dir, parse_episode
 
-
-def load_run_dir(path: str | None) -> str:
-    """Return path to run directory. If 'path' is None, use latest."""
-    if path:
-        return path
-    if not os.path.exists(BASE_DIR):
-        raise FileNotFoundError(f"{BASE_DIR} does not exist")
-    runs = sorted(d for d in os.listdir(BASE_DIR) if os.path.isdir(os.path.join(BASE_DIR, d)))
-    if not runs:
-        raise FileNotFoundError(f"No runs found in {BASE_DIR}")
-    return os.path.join(BASE_DIR, runs[-1])
-
-
-def parse_episode(row: pd.Series) -> tuple[bool, bool, bool, bool, bool, int, int, int]:
-    """Extract episode metrics from a row.
-
-    Returns a tuple '(bluff, value_bet, call, fold, responded_to_bet, jack_hand, queen_hand, king_hand)'.
-    'bluff' is True if we bet with J or Q and opponent responded.
-    'value_bet' is True if we bet with K and opponent responded.
-    'call' is True if our last action was a call.
-    'fold' is True if our last action was a fold.
-    'responded_to_bet' indicates we faced a bet and either called or folded.
-    Also returns indicators for having each hand.
-    """
-    history = row.get("history", "")
-    actions = history.split("-") if isinstance(history, str) and history else []
-    first_to_act = int(row.get("first_to_act", 0))
-    hand = int(row.get("hand", 0))
-
-    bluff = False
-    value_bet = False
-    call = False
-    fold = False
-    responded = False
-
-    if actions:
-        last_idx = len(actions) - 1
-        actor_last = (first_to_act + last_idx) % 2
-        last_action = actions[-1]
-        if actor_last == 0 and last_action in ("call", "fold"):
-            responded = True
-            if last_action == "call":
-                call = True
-            elif last_action == "fold":
-                fold = True
-
-        if len(actions) >= 2:
-            bet_idx = len(actions) - 2
-            actor_bet = (first_to_act + bet_idx) % 2
-            if actor_bet == 0 and actions[bet_idx] == "bet":
-                if hand in (1, 2):
-                    bluff = True
-                elif hand == 3:
-                    value_bet = True
-
-    return bluff, value_bet, call, fold, responded, hand == 1, hand == 2, hand == 3
 
 
 def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:

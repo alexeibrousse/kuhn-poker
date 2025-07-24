@@ -1,12 +1,13 @@
 import random
 import numpy as np
 import pandas as pd
-import json
 import os
-from datetime import datetime
 import sys
 import subprocess
 from tqdm import trange
+
+from utils import create_run_dir, save_metadata, gradient_norm
+
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -271,34 +272,6 @@ def update_nn(trajectory: list[tuple[np.ndarray, int, np.ndarray]], advantage: f
 
 # ————— Utils and data logging ————— #
 
-def create_run_dir() -> str:
-    """
-    Creates a timestamped run directory inside 'data/numpy-nn'.
-    Returns the path to the created directory.
-    """
-    base_dir = os.path.join(os.getcwd(), "data", "numpy-nn")
-    os.makedirs(base_dir, exist_ok=True)
-    run_name = datetime.now().strftime("%d-%m-%y_%H-%M")
-    run_dir = os.path.join(base_dir, run_name)
-    os.makedirs(run_dir, exist_ok=True)
-    return run_dir
-
-
-
-def save_metadata() -> None:
-    """
-    Saves the metadata dictionary to a config.json file inside the run directory.
-    """
-    with open(os.path.join(RUN_DIR, "config.json"), "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=4)
-
-
-
-def gradient_norm(dW1: np.ndarray, dW2: np.ndarray) -> float:
-    """
-    Computes the norm of the weight gradients.
-    """
-    return np.sqrt(np.sum(dW1**2) + np.sum(dW2**2))
 
 
 
@@ -331,7 +304,7 @@ def main() -> None:
     """
     Main training loop for the neural network.
     """
-    save_metadata()
+    save_metadata(metadata, RUN_DIR)
     baseline = 0.0 # Initial baseline
     state = env.reset() # Initial state of the game
     episode_data: list[dict] = [] # Stores data for each episode, to be analyzed by data_analysis.py
