@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
 from subpoker.agents import RuleBasedAgent
-from subpoker.numpy_nn import NeuralNet
+from subpoker.numpy_nn import NumNet
 
 
 # ————— Environment and reproducibility ————— #
@@ -34,7 +34,7 @@ Seeds for reproducibility:
 # ————— Hyperparameters ————— #
 
 n_epochs = 1000000
-nn = NeuralNet(input_size=18, hidden_size=20, output_size=4, learning_rate=5e-5)
+nn = NumNet(input_size=18, hidden_size=20, output_size=4, learning_rate=5e-5)
 agent = RuleBasedAgent()
 initial_lr = nn.lr
 decay_rate = 0.99

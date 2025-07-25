@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class NeuralNet(nn.Module):
+class PyNet(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, output_size: int, learning_rate: float):
         super().__init__()
         self.input_size = input_size
@@ -10,6 +10,7 @@ class NeuralNet(nn.Module):
         self.output_size = output_size
         self.learning_rate = learning_rate
 
+        # Fully connected layers with Xavier initalization
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, output_size)
 

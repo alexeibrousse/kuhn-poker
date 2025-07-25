@@ -4,7 +4,7 @@ Functional implementation of a simple forward-feeding neural network for Policy 
 Input is a numpy ndarray, passed through a ReLU-activated hidden layer for a softmax probability distribution output.
 """
 
-class NeuralNet():
+class NumNet():
     def __init__(self, input_size:int, hidden_size:int, output_size:int, learning_rate: float):
         self.input_size = input_size
         self.hidden_size = hidden_size
