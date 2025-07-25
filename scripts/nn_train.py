@@ -8,7 +8,6 @@ from tqdm import trange
 
 from utils import create_run_dir, save_metadata, gradient_norm
 
-
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
