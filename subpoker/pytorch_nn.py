@@ -17,16 +17,16 @@ class PyNet(nn.Module):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
     
 
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         hidden = F.relu(self.fc1(x))
         
-        # Raw action scores
         logits = self.fc2(hidden)
 
-        # Converts logits to probabilities
         return F.softmax(logits, dim=-1)
         
     
+
     def reinforce_update(self, state: torch.Tensor, action: int, advantage: float) -> torch.Tensor:
         
         probs = self.forward(state)
@@ -35,8 +35,8 @@ class PyNet(nn.Module):
         log_prob = torch.log(probs[action] + 1e-10)
         loss = - log_prob * advantage
 
-        self.optimizer.zero_grad() # Clear previous gradients to avoid accumulation
+        self.optimizer.zero_grad() 
         loss.backward() 
-        self.optimizer.step() # Update the model parameters
+        self.optimizer.step()
 
         return probs.detach() # Detaching to avoid tracking gradients in the next forward pass

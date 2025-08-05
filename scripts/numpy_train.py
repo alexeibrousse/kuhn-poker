@@ -15,6 +15,7 @@ from subpoker.agents import RuleBasedAgent
 from subpoker.numpy_nn import NumNet
 
 
+
 # ————— Environment and reproducibility ————— #
 
 random_seed = random.randint(0, 2**32 - 1)
@@ -132,7 +133,7 @@ def update_baseline(baseline: float, reward: float) -> float:
     """
     momentum, bound = baseline_momentum, baseline_bound
 
-    if momentum <= 0 or momentum >= 1: # If momentum is 0, there is no baseline. If momentum is 1, the baseline is the reward.
+    if not (0 < momentum < 1): # If momentum is 0, there is no baseline. If momentum is 1, the baseline is the reward.
         raise ValueError("Momentum must be in ]0, 1[.")
     if bound <= 0:
         raise ValueError("Bound must be positive.")
@@ -157,7 +158,7 @@ def learning_rate_decay(episode: int) -> float:
     decay_rate is in ]0, 1].
     If decay_rate is 0, no learning occurs. If decay_rate is 1, the learning rate is constant.
     """
-    if nn.lr <= 0: # Initial learning rate
+    if initial_lr <= 0: # Initial learning rate
         raise ValueError("Initial learning rate must be positive.")
     if not (0 < decay_rate <= 1):
         raise ValueError("Decay rate must be in ]0, 1].") 
@@ -170,7 +171,6 @@ def entropy_coeff_schedule(episode: int) -> float:
     """
     Linearly decays the 'entropy_coefficient' to 0.0 over training.
     """
-    
     return entropy_coeff * entropy_schedule * (1 - (episode / n_epochs))
 
 
@@ -180,7 +180,6 @@ def entropy_loss(probs: np.ndarray) -> float:
     Computes the entropy loss for the given probabilities.
     The addition of 1e-10 is to avoid log(0)
     """  
-
     return -np.sum(probs * np.log(probs + 1e-10))
 
 
