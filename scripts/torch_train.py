@@ -25,7 +25,7 @@ EPOCHS = 500000
 HIDDEN_SIZE = 20
 LEARNING_RATE = 1e-4
 
-LR_DECAY_RATE = 0.99
+LR_DECAY_RATE = 0.999
 ENTROPY_COEFF = 1e-2
 ENTROPY_DECAY = 0.999
 GRADIENT_CLIP = 10.0
@@ -39,7 +39,7 @@ RANDOM_SEED = 1
 
 # —————— Feature Toggles —————— #
 
-USE_LR_DECAY                = False 
+USE_LR_DECAY                = True 
 USE_ENTROPY                 = False 
 USE_ENTROPY_DECAY           = False 
 USE_BASELINE_BOUND          = False 
@@ -94,9 +94,9 @@ metadata = {
     "output_size": nn.output_size,
     "initial_learning_rate": LEARNING_RATE,
     "activation": "ReLU",
-    "lr_decay_rate": LR_DECAY_RATE if USE_LR_DECAY else "NO",
-    "entropy_coeff": ENTROPY_COEFF if USE_ENTROPY else "NO",
-    "entropy_decay_rate": ENTROPY_DECAY if USE_ENTROPY_DECAY else "NO",
+    "lr_decay_rate": f"YES - {LR_DECAY_RATE}" if USE_LR_DECAY else "NO",
+    "entropy_coeff": f"YES - {ENTROPY_COEFF}" if USE_ENTROPY else "NO",
+    "entropy_decay_rate": f"YES - {ENTROPY_DECAY}" if USE_ENTROPY_DECAY else "NO",
     "baseline_momentum": BASELINE_MOMENTUM,
     "baseline_bound": BASELINE_BOUND if USE_BASELINE_BOUND else "NO",
     "baseline_decay": BASELINE_DECAY if USE_BASELINE_DECAY else "NO",
@@ -212,26 +212,35 @@ def train():
         
 
         if USE_LR_DECAY:
-            nn.optimizer.param_groups[0]["lr"] *= LR_DECAY_RATE
+            nn.optimizer.param_groups[0]["lr"] = LEARNING_RATE * (1 - e / EPOCHS)
 
         if USE_ENTROPY_DECAY:
             ENTROPY_COEFF *= ENTROPY_DECAY
         
+
         lr = nn.optimizer.param_groups[0]["lr"]
         p_check, p_bet, p_call, p_fold = first_probs  # type: ignore
         
-        logs.append({
-            "episode": e,
-            "reward": reward,
-            "baseline": baseline,
-            "grad_norm": grad_norm,
-            "entropy_coeff": ENTROPY_COEFF,
-            "learning_rate": lr,
-            "p_check": p_check,
-            "p_bet": p_bet,
-            "p_call": p_call,
-            "p_fold": p_fold
-        })
+        logs.append(
+            {
+                "episode": e,
+                "hand": env.hands[PLAYER_NUMBER],
+                "opp_hand": env.hands[1 - PLAYER_NUMBER],
+                "first_to_act": env.first_to_start(),
+                "history": "-".join(env.history),
+                "history_length": len(env.history),
+                "reward": reward,
+                "baseline": baseline,
+                "grad_norm": grad_norm,
+                "entropy_coeff": ENTROPY_COEFF,
+                "learning_rate": lr,
+                "p_check": p_check,
+                "p_bet": p_bet,
+                "p_call": p_call,
+                "p_fold": p_fold,
+            }
+        )
+
 
     df = pd.DataFrame(logs)
     df.to_csv(os.path.join(RUN_DIR, "full_training_data.csv"), index=False)

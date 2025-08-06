@@ -4,6 +4,9 @@ import json
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from utils import parse_episode
+
+
 def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     # Split data into chunks for smoothing
     interval = max(1, n_epochs // 100)
@@ -17,6 +20,9 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     p_bet_means = []
     p_call_means = []
     p_fold_means = []
+    call_rates = []
+    bluff_rates = []
+    value_bet_rates = []
 
     for start in range(0, len(df), interval):
         chunk = df.iloc[start:start + interval]
@@ -32,6 +38,27 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
         p_bet_means.append(chunk["p_bet"].mean())
         p_call_means.append(chunk["p_call"].mean())
         p_fold_means.append(chunk["p_fold"].mean())
+    
+        bluff = 0
+        value_bet = 0
+        call = 0
+        responded = 0
+        hands12 = 0
+        king_count = 0
+        for _, row in chunk.iterrows():
+            b, vb, c, _, r, j, q, k = parse_episode(row)
+            bluff += int(b)
+            value_bet += int(vb)
+            call += int(c)
+            responded += int(r)
+            if j or q:
+                hands12 += 1
+            if k:
+                king_count += 1
+        bluff_rates.append(bluff / hands12 if hands12 else 0.0)
+        value_bet_rates.append(value_bet / king_count if king_count else 0.0)
+        call_rates.append(call / responded if responded else 0.0)
+
 
     # Summary for last 10% of episodes
     recent_count = max(1, int(len(df) * 0.1))
@@ -118,6 +145,19 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.savefig(os.path.join(run_dir, "first_move_probs.pdf"))
     plt.close()
 
+    # 7. Strategic action rates
+    plt.figure()
+    plt.plot(episodes, call_rates, label="Call rate")
+    plt.plot(episodes, bluff_rates, label="Bluff rate")
+    plt.plot(episodes, value_bet_rates, label="Value bet rate")
+    plt.xlabel("Episode")
+    plt.ylabel("Rate")
+    plt.title("Strategic Action Rates")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(run_dir, "strategic_rates.pdf"))
+    plt.close()
 
 
 
