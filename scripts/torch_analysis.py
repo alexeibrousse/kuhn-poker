@@ -147,9 +147,9 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
 
     # 7. Strategic action rates
     plt.figure()
-    plt.plot(episodes, call_rates, label="Call rate")
     plt.plot(episodes, bluff_rates, label="Bluff rate")
     plt.plot(episodes, value_bet_rates, label="Value bet rate")
+    plt.plot(episodes, call_rates, label="Call rate")
     plt.xlabel("Episode")
     plt.ylabel("Rate")
     plt.title("Strategic Action Rates")

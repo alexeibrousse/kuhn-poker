@@ -211,8 +211,8 @@ def train():
         nn.optimizer.step()
         
 
-        if USE_LR_DECAY:
-            nn.optimizer.param_groups[0]["lr"] = LEARNING_RATE * (1 - e / EPOCHS)
+        if USE_LR_DECAY and e % 1000 == 0:
+            nn.optimizer.param_groups[0]["lr"] *= LR_DECAY_RATE 
 
         if USE_ENTROPY_DECAY:
             ENTROPY_COEFF *= ENTROPY_DECAY
