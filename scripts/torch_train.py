@@ -21,7 +21,7 @@ from subpoker.agents import RuleBasedAgent, NashAgent
 
 # —————— Hyperparameters —————— #
 
-EPOCHS = 500000
+EPOCHS = 250000
 HIDDEN_SIZE = 50
 LEARNING_RATE = 1e-3
 
