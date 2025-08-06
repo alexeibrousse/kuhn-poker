@@ -23,7 +23,7 @@ from subpoker.agents import RuleBasedAgent, NashAgent
 
 EPOCHS = 250000
 HIDDEN_SIZE = 50
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-4
 
 LR_DECAY_RATE = 0.999
 ENTROPY_COEFF = 1e-2
@@ -59,7 +59,7 @@ env = KuhnPokerEnv(RANDOM_SEED)
 
 torch.manual_seed(RANDOM_SEED)
 
-agent = RuleBasedAgent()
+agent = NashAgent()
 
 PLAYER_NUMBER = 0
 
