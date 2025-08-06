@@ -135,7 +135,7 @@ class NashAgent(Agent):
         if not 0 <= alpha <= 1/3:
             raise ValueError("alpha must be between 0 and 1/3")
         self.alpha = alpha
-        self.name = f"NashAgent(alpha={alpha})"
+        self.name = f"NashAgent(alpha={alpha:.3f})"
     
     def act(self, state: dict, legal_actions: list) -> str:
         hand = state["hand"]
