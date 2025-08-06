@@ -22,8 +22,8 @@ from subpoker.agents import RuleBasedAgent, NashAgent
 # —————— Hyperparameters —————— #
 
 EPOCHS = 500000
-HIDDEN_SIZE = 20
-LEARNING_RATE = 1e-4
+HIDDEN_SIZE = 50
+LEARNING_RATE = 1e-3
 
 LR_DECAY_RATE = 0.999
 ENTROPY_COEFF = 1e-2
@@ -211,7 +211,7 @@ def train():
         nn.optimizer.step()
         
 
-        if USE_LR_DECAY and e % 1000 == 0:
+        if USE_LR_DECAY and e % 500 == 0:
             nn.optimizer.param_groups[0]["lr"] *= LR_DECAY_RATE 
 
         if USE_ENTROPY_DECAY:

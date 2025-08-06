@@ -66,6 +66,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     avg_reward_last = float(recent["reward"].mean())
     win_rate_last = float((recent["reward"] > 0).mean())
 
+
     summary = {
         "average_reward": round(avg_reward_last, 4),
         "win_rate": round(win_rate_last, 4)
