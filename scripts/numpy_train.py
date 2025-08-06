@@ -35,7 +35,7 @@ Seeds for reproducibility:
 # ————— Hyperparameters ————— #
 
 n_epochs = 1000000
-nn = NumNet(input_size=18, hidden_size=20, output_size=4, learning_rate=5e-5)
+nn = NumNet(input_size=12, hidden_size=20, output_size=4, learning_rate=5e-5)
 agent = RuleBasedAgent()
 initial_lr = nn.lr
 decay_rate = 0.99
@@ -73,6 +73,19 @@ metadata = {
 
 # ————— Training helper functions ————— #
 
+valid_histories = {
+    (): 0,
+    ("check",): 1,
+    ("bet",): 2,
+    ("check", "check"): 3,
+    ("check", "bet"): 4,
+    ("bet", "call"): 5,
+    ("bet", "fold"): 6,
+    ("check", "bet", "call"): 7,
+    ("check", "bet", "fold"): 8,
+}
+
+
 def encode_state(state: dict) -> np.ndarray:
     """
     Encoding the game state into a 18-dimensional vector.
@@ -89,16 +102,13 @@ def encode_state(state: dict) -> np.ndarray:
     # One-hot encoding of the player's hand
     card_vec = [0, 0, 0]
     card_vec[hand - 1] = 1
-
-    action_index = {"check": 0, "call": 1, "bet": 2, "fold": 3, "none": 4}
     
-    history_mat = np.zeros((3, 5), dtype=int)
+    history = tuple(state["history"])
+    action_index = valid_histories[history]
+    history_vec = [1.0 if i == action_index else 0.0 for i in range(9)]
 
-    for i in range(3):
-        action = history[i] if i < len(history) else "none"
-        history_mat[i, action_index[action]] = 1     
 
-    return np.concatenate([card_vec, history_mat.ravel()]) #History of ongoing round
+    return np.concatenate([card_vec, history_vec]) #History of ongoing round
 
 
 
@@ -327,9 +337,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    RUN_DIR = create_run_dir()
+    RUN_DIR = create_run_dir("numpy-nn")
     main()
     print("1/2 - Training completed.")
-    analysis_script = os.path.join(os.path.dirname(__file__), "nn_analysis.py")
+    analysis_script = os.path.join(os.path.dirname(__file__), "numpy_analysis.py")
     subprocess.run([sys.executable, analysis_script, RUN_DIR], check=True)
     print("2/2 - Analysis completed.")

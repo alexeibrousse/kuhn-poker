@@ -7,11 +7,12 @@ import numpy as np
 import pandas as pd
 
 # Base directory used by training and analysis scripts
-BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "numpy-nn")
+BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "pytorch-nn")
 
 
-def create_run_dir(base_dir: Optional[str] = None) -> str:
+def create_run_dir(dir: str) -> str:
     """Create and return a timestamped run directory."""
+    base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", dir)
     base = base_dir or BASE_DIR
     os.makedirs(base, exist_ok=True)
     run_name = datetime.now().strftime("%d-%m-%y_%H-%M")

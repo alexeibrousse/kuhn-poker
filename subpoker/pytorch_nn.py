@@ -1,9 +1,11 @@
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 class PyNet(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int, output_size: int, learning_rate: float):
+    def __init__(self, input_size: int, hidden_size: int, output_size: int, learning_rate: float, random_seed: int | None = None):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
