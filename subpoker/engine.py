@@ -5,7 +5,7 @@ from typing import Optional
 class KuhnPokerEnv:
     def __init__(self, seed: Optional[int] = None):
         """
-        The optional seed parameter is used for reproductibility.
+        The optional seed parameter is used for reproducibility.
         If not provided, a random seed is used.
         """
         self._rng = random.Random(seed)
@@ -14,6 +14,7 @@ class KuhnPokerEnv:
 
 
     def reset(self):
+        """Shuffle the deck, deal cards and return the initial game state."""
         self.deck = [1, 2, 3] # Cards J, Q, K
         self._rng.shuffle(self.deck)    
            
@@ -45,11 +46,11 @@ class KuhnPokerEnv:
         If called at the end or when not supposed to, returns an empty list.
         """
 
-        mapping ={
+        mapping = {
             tuple():["check", "bet"],
             ("check",): ["check", "bet"],
             ("bet",): ["call", "fold"],
-            ("check","bet"): ["call", "fold"]
+            ("check", "bet"): ["call", "fold"]
             }
         return mapping.get(tuple(self.history),[])
     
@@ -155,3 +156,4 @@ class KuhnPokerEnv:
             'bets': list(self.bets),
             'terminal': self.terminal
         }
+

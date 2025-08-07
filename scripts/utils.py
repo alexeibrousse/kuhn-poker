@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from typing import Optional, Tuple
 
+import math
 import numpy as np
 import pandas as pd
 
@@ -28,7 +29,10 @@ def save_metadata(metadata: dict, run_dir: str) -> None:
 
 
 def load_run_dir(path: Optional[str] = None, base_dir: Optional[str] = None) -> str:
-    """Return path to a run directory. Uses latest run when *path* is None."""
+    """
+    Return path to a run directory. Uses latest run when *path* is None.
+    If *base_dir* is None, uses "data/pytorch-nn" as the base directory.
+    """
     base = base_dir or BASE_DIR
     if path:
         return path
@@ -79,3 +83,8 @@ def parse_episode(row: pd.Series) -> Tuple[bool, bool, bool, bool, bool, int, in
                     value_bet = True
 
     return bluff, value_bet, call, fold, responded, hand == 1, hand == 2, hand == 3
+
+
+def steps_to_threshold(start_value: float, threshold: float, decay_rate: float) -> int:
+    n = math.log(threshold / start_value) / math.log(decay_rate)
+    return math.ceil(n)

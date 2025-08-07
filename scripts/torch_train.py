@@ -1,3 +1,6 @@
+"""Train a simple policy network for Kuhn poker using PyNet, a PyTorch-based neural network implementation."""
+
+
 import os
 import sys
 import subprocess
@@ -10,7 +13,7 @@ from torch.distributions import Categorical
 
 from tqdm import trange
 
-from utils import create_run_dir, save_metadata
+from utils import create_run_dir, save_metadata, steps_to_threshold
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -19,49 +22,6 @@ from subpoker.pytorch_nn import PyNet
 from subpoker.agents import RuleBasedAgent, NashAgent
 
 
-# —————— Hyperparameters —————— #
-
-EPOCHS = 250000
-HIDDEN_SIZE = 50
-LEARNING_RATE = 1e-4
-
-LR_DECAY_RATE = 0.999
-ENTROPY_COEFF = 1e-2
-ENTROPY_DECAY = 0.999
-GRADIENT_CLIP = 10.0
-BASELINE_MOMENTUM = 0.10
-BASELINE_BOUND = 10
-BASELINE_DECAY = 0.999
-
-RANDOM_SEED = 1
-
-
-
-# —————— Feature Toggles —————— #
-
-USE_LR_DECAY                = True 
-USE_ENTROPY                 = False 
-USE_ENTROPY_DECAY           = False 
-USE_BASELINE_BOUND          = False 
-USE_BASELINE_DECAY          = False 
-USE_GRADIENT_CLIPPING       = False 
-RANDOM_REPRODUCTIBILITY     = False
-
-
-
-# —————— Environment and Reproductibility —————— #
-
-if not RANDOM_REPRODUCTIBILITY:
-    RANDOM_SEED = random.randint(0, 2**32 - 1)
-
-nn = PyNet(input_size=12, hidden_size=HIDDEN_SIZE, output_size=4, learning_rate=LEARNING_RATE, random_seed=RANDOM_SEED)
-env = KuhnPokerEnv(RANDOM_SEED)
-
-torch.manual_seed(RANDOM_SEED)
-
-agent = NashAgent()
-
-PLAYER_NUMBER = 0
 
 # —————— Utils —————— #
 
@@ -83,6 +43,52 @@ valid_histories = {
 
 
 
+# —————— Hyperparameters —————— #
+
+EPOCHS = 300000
+HIDDEN_SIZE = 70
+LEARNING_RATE = 1e-4
+
+LR_DECAY_RATE = 0.999
+ENTROPY_COEFF = 1e-2
+ENTROPY_DECAY = 0.999
+GRADIENT_CLIP = 10.0
+BASELINE_MOMENTUM = 0.10
+BASELINE_BOUND = 10
+BASELINE_DECAY = 0.999
+
+RANDOM_SEED = 1
+
+
+
+# —————— Feature Toggles —————— #
+
+USE_LR_DECAY                = True 
+USE_ENTROPY                 = False 
+USE_ENTROPY_DECAY           = False 
+USE_BASELINE_BOUND          = False 
+USE_BASELINE_DECAY          = False 
+USE_GRADIENT_CLIPPING       = False
+RANDOM_REPRODUCIBILITY      = False
+
+
+
+# —————— Environment and Reproducibility —————— #
+
+if not RANDOM_REPRODUCIBILITY:
+    RANDOM_SEED = random.randint(0, 2**32 - 1)
+
+nn = PyNet(input_size=12, hidden_size=HIDDEN_SIZE, output_size=4, learning_rate=LEARNING_RATE, random_seed=RANDOM_SEED)
+env = KuhnPokerEnv(RANDOM_SEED)
+
+torch.manual_seed(RANDOM_SEED)
+
+agent = NashAgent()
+
+PLAYER_NUMBER = 0
+
+
+
 # —————— Metadata —————— #
 
 metadata = {
@@ -101,7 +107,7 @@ metadata = {
     "baseline_bound": BASELINE_BOUND if USE_BASELINE_BOUND else "NO",
     "baseline_decay": BASELINE_DECAY if USE_BASELINE_DECAY else "NO",
     "gradient_clip": GRADIENT_CLIP if USE_GRADIENT_CLIPPING else "NO",
-    "random_seed": f"{RANDOM_SEED} - chosen" if RANDOM_REPRODUCTIBILITY else f"{RANDOM_SEED} - random",
+    "random_seed": f"{RANDOM_SEED} - chosen" if RANDOM_REPRODUCIBILITY else f"{RANDOM_SEED} - random",
 }   
 
 
@@ -109,8 +115,9 @@ metadata = {
 # —————— Training —————— #
 
 def encode_state(state: dict) -> torch.Tensor:
+    """Encode the game *state* into a tensor representation."""
     hand = state["hand"]
-    hand_vec = [1.0 if (i+1) == hand else 0 for i in range(3)]
+    hand_vec = [1.0 if (i + 1) == hand else 0 for i in range(3)]
     history = tuple(state["history"])
     action_index = valid_histories[history]
     history_vec = [1.0 if i == action_index else 0.0 for i in range(9)]
@@ -119,6 +126,7 @@ def encode_state(state: dict) -> torch.Tensor:
 
 
 def sample_action(probs: torch.Tensor, legal_actions: list):
+    """Sample an action from *probs* restricted to *legal_actions*."""
     mask = torch.zeros_like(probs)
     indices = [ACTION_MAP.index(action) for action in legal_actions]
     mask[indices] = 1.0
@@ -127,7 +135,6 @@ def sample_action(probs: torch.Tensor, legal_actions: list):
 
     if masked_probs.sum().item() == 0:
         masked_probs = mask / mask.sum()
-    
     else:
         masked_probs /= masked_probs.sum()
     
@@ -140,10 +147,11 @@ def sample_action(probs: torch.Tensor, legal_actions: list):
 
 
 def train():
+    """Main training loop for PyNet."""
     baseline = 0.0
 
     save_metadata(metadata, RUN_DIR)
-    logs = [] # Collect logs for analysis
+    logs = []  # Collect logs for analysis
 
     for e in trange(1, EPOCHS + 1, desc="Training Epochs"):
         state = env.reset()
@@ -162,7 +170,7 @@ def train():
                     first_probs = probs.detach().cpu().numpy()
 
                 action_index, log_prob, entropy = sample_action(probs, legal_actions)
-                action = ACTION_MAP[action_index] #type: ignore
+                action = ACTION_MAP[action_index]  # type: ignore
 
                 saved_log_probs.append(log_prob)
                 saved_entropies.append(entropy)
@@ -170,16 +178,16 @@ def train():
                 state, rewards, done, _ = env.step(action)
         
             else:
-                legal = env.legal_actions()
-                action = agent.act(state, legal)
-                state, rewards, done, _ = env.step(action)
+                with torch.no_grad():
+                    legal = env.legal_actions()
+                    action = agent.act(state, legal)
+                    state, rewards, done, _ = env.step(action)
         
-        reward = rewards[PLAYER_NUMBER] # type: ignore
+        reward = rewards[PLAYER_NUMBER]  # type: ignore
         
         if USE_BASELINE_DECAY:
             advantage = reward - baseline
             baseline = BASELINE_DECAY * baseline + (1 - BASELINE_DECAY) * reward
-            
         else:
             advantage = reward - baseline
             baseline = BASELINE_MOMENTUM * baseline + (1 - BASELINE_MOMENTUM) * reward
@@ -211,7 +219,7 @@ def train():
         nn.optimizer.step()
         
 
-        if USE_LR_DECAY and e % 500 == 0:
+        if USE_LR_DECAY and e % (EPOCHS // steps_to_threshold(LEARNING_RATE, 1e-8, LR_DECAY_RATE)) == 0:
             nn.optimizer.param_groups[0]["lr"] *= LR_DECAY_RATE 
 
         if USE_ENTROPY_DECAY:
@@ -251,3 +259,4 @@ def train():
 
 if __name__ == "__main__":
     train()
+

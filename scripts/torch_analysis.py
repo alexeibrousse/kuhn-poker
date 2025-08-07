@@ -1,3 +1,7 @@
+"""
+Analyzes logged data from a training run of the NumNet agent and generates graphs.
+"""
+
 import os
 import sys
 import json
@@ -8,6 +12,9 @@ from utils import parse_episode
 
 
 def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
+    """
+    Computes various graphs and statistics from the training data and generates plots.
+    """
     # Split data into chunks for smoothing
     interval = max(1, n_epochs // 100)
     episodes = []
@@ -163,7 +170,9 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
 
 
 def main() -> None:
-    # Expect run directory as first argument
+    """
+    Main function, loads the run directory and analyze the training data.
+    """
     run_dir = sys.argv[1] if len(sys.argv) > 1 else "."
     data_file = os.path.join(run_dir, "full_training_data.csv")
     if not os.path.exists(data_file):

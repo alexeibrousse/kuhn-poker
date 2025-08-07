@@ -1,10 +1,11 @@
 import numpy as np
 """
-Functional implementation of a simple forward-feeding neural network for Policy Gradient (REINFORCE).
+Feedforward NumPy neural network used for policy gradient training.
 Input is a numpy ndarray, passed through a ReLU-activated hidden layer for a softmax probability distribution output.
 """
 
 class NumNet():
+    """Simple two-layer feedforward network for REINFORCE."""
     def __init__(self, input_size:int, hidden_size:int, output_size:int, learning_rate: float):
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -19,7 +20,7 @@ class NumNet():
         self.b2 = np.random.randn(output_size)
 
 
-    def forward(self, X):
+    def forward(self, X: np.ndarray) -> np.ndarray:
         """
         Forward pass through the neural network.
         
@@ -33,7 +34,7 @@ class NumNet():
         return probs
 
 
-    def softmax(self, X):
+    def softmax(self, X: np.ndarray) -> np.ndarray:
         """
         Applies the softmax function to convert logits to a probability distribution.
         Returns np.ndarray of probabilities summing to 1
@@ -42,7 +43,7 @@ class NumNet():
         return e_X / np.sum(e_X)
 
 
-    def backward(self, X, action_taken, advantage, probs):
+    def backward(self, X: np.ndarray, action_taken: int, advantage: float, probs: np.ndarray) -> tuple:
         """
         Computes gradients for all network parameters using REINFORCE method.
 
@@ -68,10 +69,8 @@ class NumNet():
         return dW1, db1, dW2, db2
     
 
-    def update(self, dW1, db1, dW2, db2):
-        """
-        Applies gradient descent update to all parameters.
-        """
+    def update(self, dW1: np.ndarray, db1: np.ndarray, dW2: np.ndarray, db2: np.ndarray) -> None:
+        """ Applies gradient descent update to all parameters. """
         self.W1 -= self.lr * dW1
         self.b1 -= self.lr * db1
         self.W2 -= self.lr * dW2

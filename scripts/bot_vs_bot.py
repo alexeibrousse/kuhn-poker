@@ -1,3 +1,5 @@
+"""Play matches between different Kuhn poker agents."""
+
 import argparse
 import os
 import sys
@@ -10,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 import pandas as pd
 from subpoker.engine import KuhnPokerEnv
 from subpoker.agents import (
+    Agent,
     RuleBasedAgent,
     BluffAgent,
     RandomAgent,
@@ -27,6 +30,7 @@ AGENT_MAP = {
 }
 
 def parse_args():
+    """Return command-line arguments for the simulation."""
     parser = argparse.ArgumentParser(description="Play Kuhn poker bots against each other")
     parser.add_argument("--agent1", default="rule", help="Agent for player 0")
     parser.add_argument("--agent2", default="nash", help="Agent for player 1")
@@ -36,13 +40,15 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=None, help="Optional random seed for reproducibility")
     return parser.parse_args()
 
-def make_agent(name: str):
+def make_agent(name: str) -> Agent:
+    """Create an agent instance based on the provided name."""
     cls = AGENT_MAP.get(name.lower())
     if cls is None:
         raise ValueError(f"Unknown agent type: {name}")
     return cls()
 
 def main():
+    """Run the head-to-head simulation and save results."""
     args = parse_args()
     if args.seed is not None:
         random.seed(args.seed)
@@ -67,8 +73,8 @@ def main():
         result = {
             "episode": episode,
             "winner": env.winner,
-            "reward_p0": rewards[0], # type: ignore
-            "reward_p1": rewards[1], # type: ignore
+            "reward_p0": rewards[0],  # type: ignore
+            "reward_p1": rewards[1],  # type: ignore
             "history": "-".join(env.history),
         }
         results.append(result)

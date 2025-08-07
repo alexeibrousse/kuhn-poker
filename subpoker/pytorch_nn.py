@@ -1,18 +1,25 @@
-from typing import Optional
+"""
+Simple two-layered feedforward PyTorch neural network implementation for policy gradient training.
+"""
 
+from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 class PyNet(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int, output_size: int, learning_rate: float, random_seed: int | None = None):
+    def __init__(self, input_size: int, hidden_size: int, output_size: int, learning_rate: float, random_seed: Optional[int] = None):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.learning_rate = learning_rate
 
-        # Fully connected layers with Xavier initalization
+        if random_seed is not None:
+            torch.manual_seed(random_seed)
+            torch.mps.manual_seed(random_seed)
+        
+        # Fully connected layers with Xavier initialization
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.fc2 = nn.Linear(hidden_size, output_size)
 
@@ -21,6 +28,7 @@ class PyNet(nn.Module):
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Return action probabilities for input tensor *x*."""
         hidden = F.relu(self.fc1(x))
         
         logits = self.fc2(hidden)
@@ -30,15 +38,15 @@ class PyNet(nn.Module):
     
 
     def reinforce_update(self, state: torch.Tensor, action: int, advantage: float) -> torch.Tensor:
-        
+        """Perform a REINFORCE update and return detached action probabilities."""
         probs = self.forward(state)
 
         # Log-probability of the action that was actually taken
         log_prob = torch.log(probs[action] + 1e-10)
-        loss = - log_prob * advantage
+        loss = -log_prob * advantage
 
-        self.optimizer.zero_grad() 
-        loss.backward() 
+        self.optimizer.zero_grad()
+        loss.backward()
         self.optimizer.step()
 
         return probs.detach() # Detaching to avoid tracking gradients in the next forward pass

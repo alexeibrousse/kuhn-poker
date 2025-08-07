@@ -1,3 +1,7 @@
+"""
+Analyzes logged data from a training run of the NumNet agent and generates graphs.
+"""
+
 import os
 import sys
 import json
@@ -9,6 +13,9 @@ from utils import load_run_dir, parse_episode
 
 
 def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
+    """
+    Computes various graphs and statistics from the training data and generates plots.
+    """
     interval = max(1, n_epochs // 100)
     episodes = []
     avg_rewards = []
@@ -194,19 +201,15 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
 
 
 def main() -> None:
+    """
+    Main function, loads the run directory and analyze the training data.
+    """
     run_dir = load_run_dir(sys.argv[1] if len(sys.argv) > 1 else None)
     data_file = os.path.join(run_dir, "full_training_data.csv")
     if not os.path.exists(data_file):
         raise FileNotFoundError(f"{data_file} not found")
     df = pd.read_csv(data_file)
-
-    config_path = os.path.join(run_dir, "config.json")
-    if os.path.exists(config_path):
-        with open(config_path, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-        n_epochs = int(cfg.get("number_epochs", len(df)))
-    else:
-        n_epochs = len(df)
+    n_epochs = len(df)
 
     analyze(df, n_epochs, run_dir)
 
@@ -214,3 +217,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

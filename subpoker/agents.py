@@ -49,6 +49,7 @@ class RandomAgent(Agent):
         self.name = "RandomAgent"
     
     def act(self, state: dict, legal_actions: list) -> str:
+        """Select and return a random action from *legal_actions*."""
         return random.choice(legal_actions)
 
 
@@ -61,6 +62,7 @@ class BluffAgent(Agent):
         self.name = "BluffAgent"
 
     def act(self, state: dict, legal_actions: list) -> str:
+        """Bluff or play straightforwardly based on *bluff_prob* and the current hand."""
         hand = state["hand"]
 
         if "bet" in legal_actions:

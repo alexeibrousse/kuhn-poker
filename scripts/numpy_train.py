@@ -1,3 +1,5 @@
+"""Train a simple policy network for Kuhn poker using NumNet, a NumPy-based neural network implementation."""
+
 import random
 import numpy as np
 import pandas as pd
@@ -88,7 +90,7 @@ valid_histories = {
 
 def encode_state(state: dict) -> np.ndarray:
     """
-    Encoding the game state into a 18-dimensional vector.
+    Encodes the game state into a 18-dimensional vector.
     The first three dimensions represent the player's card as one-hot:
         [0, 0, 1] is King
         [0, 1, 0] is Queen
@@ -108,7 +110,7 @@ def encode_state(state: dict) -> np.ndarray:
     history_vec = [1.0 if i == action_index else 0.0 for i in range(9)]
 
 
-    return np.concatenate([card_vec, history_vec]) #History of ongoing round
+    return np.concatenate([card_vec, history_vec]) # History of ongoing round
 
 
 
@@ -165,7 +167,7 @@ def update_advantage(baseline: float, reward: float) -> float:
 def learning_rate_decay(episode: int) -> float:
     """
     Linearly decays the learning rate based on the episode number.
-    decay_rate is in ]0, 1].
+    ``decay_rate`` is in ]0, 1].
     If decay_rate is 0, no learning occurs. If decay_rate is 1, the learning rate is constant.
     """
     if initial_lr <= 0: # Initial learning rate
@@ -179,7 +181,7 @@ def learning_rate_decay(episode: int) -> float:
 
 def entropy_coeff_schedule(episode: int) -> float:
     """
-    Linearly decays the 'entropy_coefficient' to 0.0 over training.
+    Linearly decays the ``entropy_coefficient`` to 0.0 over training.
     """
     return entropy_coeff * entropy_schedule * (1 - (episode / n_epochs))
 
@@ -343,3 +345,4 @@ if __name__ == "__main__":
     analysis_script = os.path.join(os.path.dirname(__file__), "numpy_analysis.py")
     subprocess.run([sys.executable, analysis_script, RUN_DIR], check=True)
     print("2/2 - Analysis completed.")
+
