@@ -19,7 +19,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
 from subpoker.pytorch_nn import PyNet
-from subpoker.agents import NashAgent
+from subpoker.agents import RuleBasedAgent
 
 
 
@@ -51,7 +51,7 @@ for history in [
 
 # —————— Hyperparameters —————— #
 
-EPOCHS = 300000
+EPOCHS = 250000
 HIDDEN_SIZE = 30
 LEARNING_RATE = 1e-4
 
@@ -89,7 +89,7 @@ env = KuhnPokerEnv(RANDOM_SEED)
 
 torch.manual_seed(RANDOM_SEED)
 
-agent = NashAgent()
+agent = RuleBasedAgent()
 
 PLAYER_NUMBER = 0
 
@@ -150,12 +150,13 @@ def sample_action(probs: torch.Tensor, legal_actions: list):
     return action.item(), log_prob, entropy
 
 
+
 def train():
     """Main training loop for PyNet."""
     baseline = 0.0
 
     save_metadata(metadata, RUN_DIR)
-    logs = []  # Collect logs for analysis
+    episode_logs = []  # Collect logs for analysis
 
     for e in trange(1, EPOCHS + 1, desc="Training Epochs"):
         state = env.reset()
@@ -232,7 +233,7 @@ def train():
         lr = nn.optimizer.param_groups[0]["lr"]
         p_check, p_bet, p_call, p_fold = first_probs  # type: ignore
         
-        logs.append(
+        episode_logs.append(
             {
                 "episode": e,
                 "hand": env.hands[PLAYER_NUMBER],
@@ -243,7 +244,7 @@ def train():
                 "reward": reward,
                 "baseline": baseline,
                 "grad_norm": grad_norm,
-                "entropy": entropy_sum,
+                "entropy": entropy_sum.item(),
                 "learning_rate": lr,
                 "p_check": p_check,
                 "p_bet": p_bet,
@@ -253,7 +254,7 @@ def train():
         )
 
 
-    df = pd.DataFrame(logs)
+    df = pd.DataFrame(episode_logs)
     df.to_csv(os.path.join(RUN_DIR, "full_training_data.csv"), index=False)
     analysis_script = os.path.join(os.path.dirname(__file__), "torch_analysis.py")
     subprocess.run([sys.executable, analysis_script, RUN_DIR], check=True)

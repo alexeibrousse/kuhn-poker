@@ -39,7 +39,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
         avg_rewards.append(chunk["reward"].mean())
         baseline_means.append(chunk["baseline"].mean())
         grad_norm_means.append(chunk["grad_norm"].mean())
-        entropy_means.append(chunk["entropy_sum"].mean())
+        entropy_means.append(chunk["entropy"].mean())
         lr_means.append(chunk["learning_rate"].mean())
         p_check_means.append(chunk["p_check"].mean())
         p_bet_means.append(chunk["p_bet"].mean())
