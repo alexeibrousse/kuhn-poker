@@ -16,7 +16,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     Computes various graphs and statistics from the training data and generates plots.
     """
     # Split data into chunks for smoothing
-    interval = max(1, n_epochs // 100)
+    interval = max(1, n_epochs // 50)
     episodes = []
     avg_rewards = []
     baseline_means = []
