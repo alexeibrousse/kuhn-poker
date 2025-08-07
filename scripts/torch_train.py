@@ -19,7 +19,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
 from subpoker.pytorch_nn import PyNet
-from subpoker.agents import RuleBasedAgent
+from subpoker.agents import RuleBasedAgent, NashAgent
 
 
 
@@ -51,7 +51,7 @@ for history in [
 
 # —————— Hyperparameters —————— #
 
-EPOCHS = 250000
+EPOCHS = 500000
 HIDDEN_SIZE = 30
 LEARNING_RATE = 1e-4
 
@@ -74,7 +74,7 @@ USE_ENTROPY                 = False
 USE_ENTROPY_DECAY           = False 
 USE_BASELINE_BOUND          = False 
 USE_BASELINE_DECAY          = False 
-USE_GRADIENT_CLIPPING       = False
+USE_GRADIENT_CLIPPING       = True
 RANDOM_REPRODUCIBILITY      = False
 
 
@@ -89,7 +89,7 @@ env = KuhnPokerEnv(RANDOM_SEED)
 
 torch.manual_seed(RANDOM_SEED)
 
-agent = RuleBasedAgent()
+agent = NashAgent()
 
 PLAYER_NUMBER = 0
 
@@ -257,7 +257,9 @@ def train():
     df = pd.DataFrame(episode_logs)
     df.to_csv(os.path.join(RUN_DIR, "full_training_data.csv"), index=False)
     analysis_script = os.path.join(os.path.dirname(__file__), "torch_analysis.py")
+    print("1/2 Training Complete.")
     subprocess.run([sys.executable, analysis_script, RUN_DIR], check=True)
+    print("2/2 - Analysis completed.")
 
 
 

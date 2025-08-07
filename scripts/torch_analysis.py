@@ -72,14 +72,70 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     recent = df.tail(recent_count)
     avg_reward_last = float(recent["reward"].mean())
     win_rate_last = float((recent["reward"] > 0).mean())
+    entropy_last = float(recent["entropy"].mean())
 
+    # Compute action tables for last 10% of episodes
+    prebet_counts = {1: {"bet": 0, "check": 0}, 2: {"bet": 0, "check": 0}, 3: {"bet": 0, "check": 0}}
+    response_counts = {1: {"call": 0, "fold": 0}, 2: {"call": 0, "fold": 0}, 3: {"call": 0, "fold": 0}}
+
+    for _, row in recent.iterrows():
+        history = row.get("history", "")
+        actions = history.split("-") if isinstance(history, str) and history else []
+        first = int(row.get("first_to_act", 0))
+        hand = int(row.get("hand", 0))
+
+        bet_in_play = False
+        prebet_action = None
+        response_action = None
+
+        for idx, act in enumerate(actions):
+            actor = (first + idx) % 2
+            if actor == 0:
+                if not bet_in_play and prebet_action is None:
+                    prebet_action = act
+                elif bet_in_play and response_action is None and act in ("call", "fold"):
+                    response_action = act
+            if act == "bet":
+                bet_in_play = True
+
+        if prebet_action in ("bet", "check"):
+            prebet_counts[hand][prebet_action] += 1
+
+        if response_action in ("call", "fold"):
+            response_counts[hand][response_action] += 1
+
+    def pct(a: int, b: int) -> float:
+        total = a + b
+        return round(100 * a / total, 2) if total else 0.0
+
+    hand_names = {1: "Jack", 2: "Queen", 3: "King"}
+    bet_check_table = {}
+    call_fold_table = {}
+    for h, name in hand_names.items():
+        bc = prebet_counts[h]
+        cf = response_counts[h]
+        bet_check_table[name] = {
+            "bet": pct(bc["bet"], bc["check"]),
+            "check": pct(bc["check"], bc["bet"]),
+        }
+        call_fold_table[name] = {
+            "call": pct(cf["call"], cf["fold"]),
+            "fold": pct(cf["fold"], cf["call"]),
+        }
 
     summary = {
         "average_reward": round(avg_reward_last, 4),
-        "win_rate": round(win_rate_last, 4)
-    }
-    with open(os.path.join(run_dir, "analysis_summary.json"), "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
+        "win_rate": round(win_rate_last, 4),
+        "entropy": round(entropy_last, 4),
+        "action_table": {
+            "bet_check": bet_check_table,
+            "call_fold": call_fold_table,
+        },
+    }    
+    
+    with open(os.path.join(run_dir, "training_summary.json"), "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=4)
+
 
     # 1. Average reward over time
     plt.figure()
@@ -116,15 +172,15 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.savefig(os.path.join(run_dir, "grad_norm.pdf"))
     plt.close()
 
-    # 4. Entropy coefficient
+    # 4. Entropy
     plt.figure()
     plt.plot(episodes, entropy_means)
     plt.xlabel("Episode")
-    plt.ylabel("Entropy Coefficient")
-    plt.title("Entropy Coefficient Over Time")
+    plt.ylabel("Entropy")
+    plt.title("Entropy Over Time")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(run_dir, "entropy_coeff.pdf"))
+    plt.savefig(os.path.join(run_dir, "entropy.pdf"))
     plt.close()
 
     # 5. Learning rate
