@@ -52,7 +52,7 @@ for history in [
 # —————— Hyperparameters —————— #
 
 EPOCHS = 300000
-HIDDEN_SIZE = 70
+HIDDEN_SIZE = 30
 LEARNING_RATE = 1e-4
 
 LR_DECAY_RATE = 0.999
@@ -136,10 +136,11 @@ def sample_action(probs: torch.Tensor, legal_actions: list):
 
     masked_probs = probs * mask
 
-    if masked_probs.sum().item() == 0:
+    total = masked_probs.sum()
+    if total.item() == 0:
         masked_probs = mask / mask.sum()
     else:
-        masked_probs /= masked_probs.sum()
+        masked_probs /= total
     
     dist = Categorical(masked_probs)
     action = dist.sample()
@@ -159,8 +160,8 @@ def train():
     for e in trange(1, EPOCHS + 1, desc="Training Epochs"):
         state = env.reset()
         done = False
-        saved_log_probs = []
-        saved_entropies = []
+        log_prob_sum = torch.tensor(0.0)
+        entropy_sum = torch.tensor(0.0)
         first_probs = None
 
         while not done:
@@ -170,13 +171,13 @@ def train():
                 legal_actions = env.legal_actions()
 
                 if first_probs is None:
-                    first_probs = probs.detach().cpu().numpy()
+                    first_probs = probs.detach().tolist()
 
                 action_index, log_prob, entropy = sample_action(probs, legal_actions)
                 action = ACTION_MAP[action_index]  # type: ignore
 
-                saved_log_probs.append(log_prob)
-                saved_entropies.append(entropy)
+                log_prob_sum += log_prob
+                entropy_sum += entropy
 
                 state, rewards, done, _ = env.step(action)
         
@@ -198,12 +199,11 @@ def train():
         if USE_BASELINE_BOUND:
             baseline = max(min(baseline, BASELINE_BOUND), -BASELINE_BOUND)
         
-        policy_loss = -torch.stack(saved_log_probs).sum() * advantage
+        policy_loss = -log_prob_sum * advantage
 
         if USE_ENTROPY:
             global ENTROPY_COEFF
-            entropy_loss = -torch.stack(saved_entropies).sum()
-            loss = policy_loss + entropy_loss * ENTROPY_COEFF
+            loss = policy_loss - entropy_sum * ENTROPY_COEFF
         else:
             loss = policy_loss
         
@@ -243,7 +243,7 @@ def train():
                 "reward": reward,
                 "baseline": baseline,
                 "grad_norm": grad_norm,
-                "entropy_coeff": ENTROPY_COEFF,
+                "entropy": entropy_sum,
                 "learning_rate": lr,
                 "p_check": p_check,
                 "p_bet": p_bet,
