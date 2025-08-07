@@ -6,8 +6,11 @@ import sys
 import numpy as np
 import random
 
+from utils import create_run_dir
 # Ensure the parent directory is in the path for module imports
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+RUN_DIR = create_run_dir("bot_vs_bot")
 
 import pandas as pd
 from subpoker.engine import KuhnPokerEnv
@@ -32,9 +35,9 @@ AGENT_MAP = {
 def parse_args():
     """Return command-line arguments for the simulation."""
     parser = argparse.ArgumentParser(description="Play Kuhn poker bots against each other")
-    parser.add_argument("--agent1", default="rule", help="Agent for player 0")
+    parser.add_argument("--agent1", default="nash", help="Agent for player 0")
     parser.add_argument("--agent2", default="nash", help="Agent for player 1")
-    parser.add_argument("--episodes", type=int, default=50000, help="Number of episodes to play")
+    parser.add_argument("--episodes", type=int, default=500000, help="Number of episodes to play")
     parser.add_argument("--summary-output", default="bot_vs_bot_summary.csv", help="CSV file to save summary results")
     parser.add_argument("--history-output", default="bot_vs_bot_history.csv", help="CSV file to save full game history")
     parser.add_argument("--seed", type=int, default=None, help="Optional random seed for reproducibility")
@@ -101,5 +104,10 @@ def main():
     print(f"Average reward P0: {avg_reward_p0:.3f}")
     print(f"Average reward P1: {avg_reward_p1:.3f}")
 
-    df.to_csv(args.history_output, index=False)
-    pd.DataFrame([summary]).to_csv(args.summary_output, index=False)
+    df.to_csv(os.path.join(RUN_DIR, args.history_output), index=False)
+
+    pd.DataFrame([summary]).to_csv(os.path.join(RUN_DIR, args.summary_output), index=False)
+    
+
+if __name__ == "__main__":
+    main()
