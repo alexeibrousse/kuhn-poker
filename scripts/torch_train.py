@@ -19,7 +19,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from subpoker.engine import KuhnPokerEnv
 from subpoker.pytorch_nn import PyNet
-from subpoker.agents import RuleBasedAgent, NashAgent
+from subpoker.agents import NashAgent
 
 
 
@@ -28,19 +28,25 @@ from subpoker.agents import RuleBasedAgent, NashAgent
 RUN_DIR = create_run_dir("pytorch-nn")
 
 ACTION_MAP = ["check", "bet", "call", "fold"]
+ACTION_INDICES = {action: index for index, action in enumerate(ACTION_MAP)}
 
-valid_histories = {
-    (): 0,
-    ("check",): 1,
-    ("bet",): 2,
-    ("check", "check"): 3,
-    ("check", "bet"): 4,
-    ("bet", "call"): 5,
-    ("bet", "fold"): 6,
-    ("check", "bet", "call"): 7,
-    ("check", "bet", "fold"): 8,
-}
+ALL_ACTION_MASKS = {}
 
+for history in [
+    ["check"],
+    ["bet"],
+    ["call"],
+    ["fold"],
+    ["check", "bet"],
+    ["call", "fold"],
+    ["check", "call"],  
+    ["check", "bet", "call"],
+    ["check", "bet", "fold"],
+]:
+    mask = torch.zeros(len(ACTION_MAP))
+    for action in history:
+        mask[ACTION_INDICES[action]] = 1.0
+    ALL_ACTION_MASKS[frozenset(history)] = mask
 
 
 # —————— Hyperparameters —————— #
@@ -119,17 +125,14 @@ def encode_state(state: dict) -> torch.Tensor:
     hand = state["hand"]
     hand_vec = [1.0 if (i + 1) == hand else 0 for i in range(3)]
     history = tuple(state["history"])
-    action_index = valid_histories[history]
-    history_vec = [1.0 if i == action_index else 0.0 for i in range(9)]
+    history_vec = [1.0 if i == ACTION_INDICES else 0.0 for i in range(9)]
 
     return torch.tensor(hand_vec + history_vec, dtype=torch.float32)
 
 
 def sample_action(probs: torch.Tensor, legal_actions: list):
     """Sample an action from *probs* restricted to *legal_actions*."""
-    mask = torch.zeros_like(probs)
-    indices = [ACTION_MAP.index(action) for action in legal_actions]
-    mask[indices] = 1.0
+    mask = ALL_ACTION_MASKS[frozenset(legal_actions)]
 
     masked_probs = probs * mask
 
