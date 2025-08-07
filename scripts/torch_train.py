@@ -51,7 +51,7 @@ for history in [
 
 # —————— Hyperparameters —————— #
 
-EPOCHS = 500000
+EPOCHS = 400000
 HIDDEN_SIZE = 30
 LEARNING_RATE = 1e-4
 
@@ -256,6 +256,7 @@ def train():
 
     df = pd.DataFrame(episode_logs)
     df.to_csv(os.path.join(RUN_DIR, "full_training_data.csv"), index=False)
+    torch.save(nn.state_dict(), os.path.join(RUN_DIR, "model.pth"))
     analysis_script = os.path.join(os.path.dirname(__file__), "torch_analysis.py")
     print("1/2 Training Complete.")
     subprocess.run([sys.executable, analysis_script, RUN_DIR], check=True)
