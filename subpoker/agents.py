@@ -133,7 +133,10 @@ class NashAgent(Agent):
     with probability ``1 - 3 * alpha`` and checks with a Jack.
     """
 
-    def __init__(self, alpha: float = 1/3):
+    def __init__(self, alpha: float = 1/3, random_seed: int | None = None):
+        if random_seed is not None:
+            random.seed(random_seed)
+        
         if not 0 <= alpha <= 1/3:
             raise ValueError("alpha must be between 0 and 1/3")
         self.alpha = alpha
