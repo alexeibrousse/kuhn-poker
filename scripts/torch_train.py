@@ -26,28 +26,34 @@ from subpoker.agents import RuleBasedAgent, NashAgent
 # —————— Utils —————— #
 
 RUN_DIR = create_run_dir("pytorch-nn")
+TRAINING_DIR = os.path.join(RUN_DIR, "training")
+os.makedirs(TRAINING_DIR, exist_ok=True)
 
 ACTION_MAP = ["check", "bet", "call", "fold"]
 ACTION_INDICES = {action: index for index, action in enumerate(ACTION_MAP)}
 
 ALL_ACTION_MASKS = {}
 
-for history in [
-    ["check"],
-    ["bet"],
-    ["call"],
-    ["fold"],
-    ["check", "bet"],
-    ["call", "fold"],
-    ["check", "call"],  
-    ["check", "bet", "call"],
-    ["check", "bet", "fold"],
-]:
-    mask = torch.zeros(len(ACTION_MAP))
-    for action in history:
-        mask[ACTION_INDICES[action]] = 1.0
-    ALL_ACTION_MASKS[frozenset(history)] = mask
+def add_mask(subset):
+    mask = torch.zeros(len(ACTION_MAP), dtype=torch.float32)
+    for a in subset:
+        mask[ACTION_INDICES[a]] = 1.0
+    ALL_ACTION_MASKS[frozenset(subset)] = mask
+add_mask(["check", "bet"])
+add_mask(["call", "fold"])
 
+
+VALID_HISTORIES = {
+    (): 0,
+    ("check",): 1,
+    ("bet",): 2,
+    ("check", "check"): 3,
+    ("check", "bet"): 4,
+    ("bet", "call"): 5,
+    ("bet", "fold"): 6,
+    ("check", "bet", "call"): 7,
+    ("check", "bet", "fold"): 8,
+}
 
 # —————— Hyperparameters —————— #
 
@@ -125,9 +131,10 @@ def encode_state(state: dict) -> torch.Tensor:
     hand = state["hand"]
     hand_vec = [1.0 if (i + 1) == hand else 0 for i in range(3)]
     history = tuple(state["history"])
-    history_vec = [1.0 if i == ACTION_INDICES else 0.0 for i in range(9)]
-
+    history_index = VALID_HISTORIES[history]
+    history_vec = [1.0 if i == history_index else 0.0 for i in range(9)]
     return torch.tensor(hand_vec + history_vec, dtype=torch.float32)
+
 
 
 def sample_action(probs: torch.Tensor, legal_actions: list):
@@ -155,7 +162,7 @@ def train():
     """Main training loop for PyNet."""
     baseline = 0.0
 
-    save_metadata(metadata, RUN_DIR)
+    save_metadata(metadata, TRAINING_DIR)
     episode_logs = []  # Collect logs for analysis
 
     for e in trange(1, EPOCHS + 1, desc="Training Epochs"):
@@ -183,10 +190,9 @@ def train():
                 state, rewards, done, _ = env.step(action)
         
             else:
-                with torch.no_grad():
-                    legal = env.legal_actions()
-                    action = agent.act(state, legal)
-                    state, rewards, done, _ = env.step(action)
+                legal = env.legal_actions()
+                action = agent.act(state, legal)
+                state, rewards, done, _ = env.step(action)
         
         reward = rewards[PLAYER_NUMBER]  # type: ignore
         
@@ -255,11 +261,11 @@ def train():
 
 
     df = pd.DataFrame(episode_logs)
-    df.to_csv(os.path.join(RUN_DIR, "full_training_data.csv"), index=False)
-    torch.save(nn.state_dict(), os.path.join(RUN_DIR, "model.pth"))
+    df.to_csv(os.path.join(TRAINING_DIR, "full_training_data.csv"), index=False)
+    torch.save(nn.state_dict(), os.path.join(TRAINING_DIR, "model.pth"))
     analysis_script = os.path.join(os.path.dirname(__file__), "torch_analysis.py")
     print("1/2 Training Complete.")
-    subprocess.run([sys.executable, analysis_script, RUN_DIR], check=True)
+    subprocess.run([sys.executable, analysis_script, TRAINING_DIR], check=True)
     print("2/2 - Analysis completed.")
 
 
