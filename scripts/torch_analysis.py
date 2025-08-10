@@ -10,8 +10,11 @@ import matplotlib.pyplot as plt
 
 from utils import parse_episode
 
+RUN_DIR = sys.argv[1] if len(sys.argv) > 1 else "."
+TRAINING_DIR = os.path.join(RUN_DIR, "training")
 
-def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
+
+def analyze(df: pd.DataFrame, n_epochs: int) -> None:
     """
     Computes various graphs and statistics from the training data and generates plots.
     """
@@ -133,7 +136,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
         },
     }    
     
-    with open(os.path.join(run_dir, "training_summary.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(RUN_DIR, "training_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=4)
 
 
@@ -145,7 +148,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.title("Average Reward Over Time")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(run_dir, "avg_reward.pdf"))
+    plt.savefig(os.path.join(TRAINING_DIR, "avg_reward.pdf"))
     plt.close()
 
     # 2. Baseline vs Average Reward
@@ -158,7 +161,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(run_dir, "baseline_vs_reward.pdf"))
+    plt.savefig(os.path.join(TRAINING_DIR, "baseline_vs_reward.pdf"))
     plt.close()
 
     # 3. Gradient norm
@@ -169,7 +172,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.title("Average Gradient Norm")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(run_dir, "grad_norm.pdf"))
+    plt.savefig(os.path.join(TRAINING_DIR, "grad_norm.pdf"))
     plt.close()
 
     # 4. Entropy
@@ -180,7 +183,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.title("Entropy Over Time")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(run_dir, "entropy.pdf"))
+    plt.savefig(os.path.join(TRAINING_DIR, "entropy.pdf"))
     plt.close()
 
     # 5. Learning rate
@@ -191,7 +194,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.title("Learning Rate Over Time")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(run_dir, "learning_rate.pdf"))
+    plt.savefig(os.path.join(TRAINING_DIR, "learning_rate.pdf"))
     plt.close()
 
     # 6. First-move action probabilities
@@ -206,7 +209,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(run_dir, "first_move_probs.pdf"))
+    plt.savefig(os.path.join(TRAINING_DIR, "first_move_probs.pdf"))
     plt.close()
 
     # 7. Strategic action rates
@@ -220,7 +223,7 @@ def analyze(df: pd.DataFrame, n_epochs: int, run_dir: str) -> None:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(run_dir, "strategic_rates.pdf"))
+    plt.savefig(os.path.join(RUN_DIR, "strategic_rates.pdf"))
     plt.close()
 
 
@@ -230,12 +233,12 @@ def main() -> None:
     Main function, loads the run directory and analyze the training data.
     """
     run_dir = sys.argv[1] if len(sys.argv) > 1 else "."
-    data_file = os.path.join(run_dir, "full_training_data.csv")
+    data_file = os.path.join(TRAINING_DIR, "full_training_data.csv")
     if not os.path.exists(data_file):
         raise FileNotFoundError(f"{data_file} not found")
     df = pd.read_csv(data_file)
 
-    analyze(df, len(df), run_dir)
+    analyze(df, len(df))
 
 
 

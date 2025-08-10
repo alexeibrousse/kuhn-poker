@@ -47,17 +47,12 @@ VALID_HISTORIES = {
     (): 0,
     ("check",): 1,
     ("bet",): 2,
-    ("check", "check"): 3,
-    ("check", "bet"): 4,
-    ("bet", "call"): 5,
-    ("bet", "fold"): 6,
-    ("check", "bet", "call"): 7,
-    ("check", "bet", "fold"): 8,
+    ("check", "bet"): 3,
 }
 
 # —————— Hyperparameters —————— #
 
-EPOCHS = 400000
+EPOCHS = 200000
 HIDDEN_SIZE = 30
 LEARNING_RATE = 1e-4
 
@@ -65,7 +60,7 @@ LR_DECAY_RATE = 0.999
 ENTROPY_COEFF = 1e-2
 ENTROPY_DECAY = 0.999
 GRADIENT_CLIP = 10.0
-BASELINE_MOMENTUM = 0.10
+BASELINE_MOMENTUM = 0.90
 BASELINE_BOUND = 10
 BASELINE_DECAY = 0.999
 
@@ -90,7 +85,7 @@ RANDOM_REPRODUCIBILITY      = False
 if not RANDOM_REPRODUCIBILITY:
     RANDOM_SEED = random.randint(0, 2**32 - 1)
 
-nn = PyNet(input_size=12, hidden_size=HIDDEN_SIZE, output_size=4, learning_rate=LEARNING_RATE, random_seed=RANDOM_SEED)
+nn = PyNet(input_size=7, hidden_size=HIDDEN_SIZE, output_size=4, learning_rate=LEARNING_RATE, random_seed=RANDOM_SEED)
 env = KuhnPokerEnv(RANDOM_SEED)
 
 torch.manual_seed(RANDOM_SEED)
@@ -132,7 +127,7 @@ def encode_state(state: dict) -> torch.Tensor:
     hand_vec = [1.0 if (i + 1) == hand else 0 for i in range(3)]
     history = tuple(state["history"])
     history_index = VALID_HISTORIES[history]
-    history_vec = [1.0 if i == history_index else 0.0 for i in range(9)]
+    history_vec = [1.0 if i == history_index else 0.0 for i in range(4)]
     return torch.tensor(hand_vec + history_vec, dtype=torch.float32)
 
 
@@ -162,7 +157,7 @@ def train():
     """Main training loop for PyNet."""
     baseline = 0.0
 
-    save_metadata(metadata, TRAINING_DIR)
+    save_metadata(metadata, RUN_DIR)
     episode_logs = []  # Collect logs for analysis
 
     for e in trange(1, EPOCHS + 1, desc="Training Epochs"):
@@ -262,11 +257,14 @@ def train():
 
     df = pd.DataFrame(episode_logs)
     df.to_csv(os.path.join(TRAINING_DIR, "full_training_data.csv"), index=False)
-    torch.save(nn.state_dict(), os.path.join(TRAINING_DIR, "model.pth"))
+    torch.save(nn.state_dict(), os.path.join(RUN_DIR, "model.pth"))
     analysis_script = os.path.join(os.path.dirname(__file__), "torch_analysis.py")
-    print("1/2 Training Complete.")
-    subprocess.run([sys.executable, analysis_script, TRAINING_DIR], check=True)
-    print("2/2 - Analysis completed.")
+    testing_script = os.path.join(os.path.dirname(__file__), "torch_test.py")
+    print("1/3 Training Complete.")
+    subprocess.run([sys.executable, analysis_script, RUN_DIR], check=True)
+    print("2/3 - Analysis Complete.")
+    subprocess.run([sys.executable, testing_script, RUN_DIR], check=True)
+    print("3/3 - Testing Complete.")
 
 
 
